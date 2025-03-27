@@ -24,5 +24,7 @@ In random order
 - [ ] Core user interface
 - [ ] Node user interface
 - [ ] Solid pairing
+- [ ] Changable configuraton
 - [ ] Saving config to NVS
 - [ ] Reset of device
+- [ ] Build / Project configuration
