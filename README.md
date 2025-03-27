@@ -16,6 +16,21 @@ The Core will also have its own sensor.
 Simple Temp/Humidity sensor
 Nodes can be battery powered and will enter deep-sleep between reports. 
 
+## Project stucture
+
+- zenith-components: components
+- zenith-core: core
+- zenith-node: node
+
+## Setup for Node / Core
+
+The core uses 802.15.4, so at current that means C6, H2, H4. I'm using C6.
+´´´
+idf.py set-target ESP32C6
+ifd.py menuconfig
+idf.py reconfigure
+´´´
+
 ## Todo
 
 In random order
