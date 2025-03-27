@@ -1,0 +1,15 @@
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  "files.associations": {
+    "stdio.h": "c",
+    "nvs_flash.h": "c",
+    "esp_wifi.h": "c",
+    "esp_mac.h": "c",
+    "zenith.h": "c",
+    "zenith-now.h": "c",
+    "freertos.h": "c",
+    "aht30.h": "c"
+  },
+  "idf.portWin": "COM5",
+  "idf.flashType": "UART"
+}
