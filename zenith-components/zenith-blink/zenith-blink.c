@@ -1,8 +1,9 @@
 #include <stdio.h>
+#include "esp_err.h"
 #include "zenith-blink.h"
 #include "zenith-blink-private.h"
 
-void init_led(gpio_num_t gpio_pin) {
+void init_zenith_blink(gpio_num_t gpio_pin) {
     // Define the led strip config
     led_strip_config_t strip_config = {
         .strip_gpio_num = gpio_pin,
@@ -38,5 +39,14 @@ void init_led(gpio_num_t gpio_pin) {
 };
 
 void zenith_blink(led_indicator_blink_type_t blink_type){
-    led_indicator_start(led_indicator, blink_type);
+    ESP_ERROR_CHECK(led_indicator_start(led_indicator, blink_type));
 };
+
+void zenith_blink_stop(led_indicator_blink_type_t blink_type){
+    ESP_ERROR_CHECK(led_indicator_stop(led_indicator, blink_type));
+    ESP_ERROR_CHECK(led_indicator_set_on_off(led_indicator, false));
+};
+
+void zenith_blink_off(void) {
+
+}

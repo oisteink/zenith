@@ -8,7 +8,8 @@
     "zenith.h": "c",
     "zenith-now.h": "c",
     "freertos.h": "c",
-    "aht30.h": "c"
+    "aht30.h": "c",
+    "zenith-blink-private.h": "c"
   },
   "idf.portWin": "COM5",
   "idf.flashType": "UART"

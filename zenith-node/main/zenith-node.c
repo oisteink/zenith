@@ -9,6 +9,7 @@
 
 #include "zenith-now.h"
 #include "aht30.h"
+#include "zenith-blink.h"
 
 /* zenith specific variables */
 static const char *TAG = "zenith-node";
@@ -23,14 +24,17 @@ void configure_node_peer(void)
     ESP_ERROR_CHECK(esp_now_add_peer(&broadcast));
     zenith_packet_t data_packet = {.type = PACKET_PAIRING};
     // Send peering request
+    zenith_blink(BLINK_PAIRING);
     zenith_send_data(broadcast.peer_addr, data_packet);
     // wait for ack to appear in the event_group
     while (!zenith_wait_for_ack(data_packet.type, 5000))
     {
         ESP_LOGI(TAG, "Sending peering request");
+        zenith_blink(BLINK_PAIRING);
         zenith_send_data(broadcast.peer_addr, data_packet);
     }
     ESP_ERROR_CHECK(esp_now_del_peer(broadcast.peer_addr));
+    zenith_blink_stop(BLINK_PAIRING);
 }
 
 void node_measuring_timer_cb(TimerHandle_t xTimer)
@@ -38,6 +42,7 @@ void node_measuring_timer_cb(TimerHandle_t xTimer)
     ESP_LOGI(TAG, "Read sensor data");
     zenith_packet_t data_packet = { .type = PACKET_DATA };
     aht30_read_sensor(&data_packet.sensor_data.temperature, &data_packet.sensor_data.humidity);    // Example data
+    zenith_blink(BLINK_DATA_SEND);
     zenith_send_data(node_peer, data_packet);
     // Check for ack? Maybe increase the send time or something like that, or return to pairing mode.
 }
@@ -81,6 +86,7 @@ void app_main(void)
 {
     // Set up the sensor
     aht30_init();
+    init_zenith_blink(8);
     // Set up zenith-now
     configure_zenith(node_rx_callback, NULL);
     // Check for paired core, and start pairing if not available

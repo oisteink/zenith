@@ -3,7 +3,6 @@
 #include "string.h"
 #include "esp_log.h"
 #include "esp_mac.h"
-#include "led_indicator.h"
 
 #include "zenith-now.h"
 #include "zenith-blink.h"
