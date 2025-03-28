@@ -53,7 +53,7 @@ static void core_rx_callback(const uint8_t *mac, const zenith_packet_t *packet)
 void app_main(void)
 {
     display_init();
-    init_led(WS2812_GPIO);
+    init_zenith_blink(WS2812_GPIO);
     // Initialize Zenith with default configuration
     configure_zenith(core_rx_callback, NULL);
  

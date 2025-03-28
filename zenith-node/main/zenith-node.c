@@ -35,6 +35,7 @@ void configure_node_peer(void)
     }
     ESP_ERROR_CHECK(esp_now_del_peer(broadcast.peer_addr));
     zenith_blink_stop(BLINK_PAIRING);
+    zenith_blink(BLINK_PAIRING_COMPLETE);
 }
 
 void node_measuring_timer_cb(TimerHandle_t xTimer)
