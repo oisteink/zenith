@@ -34,7 +34,8 @@ idf.py reconfigure
 ## Todo
 
 In random order
-- [ ] Get screen working
+- [X] Get screen working
+- [ ] Adapt screen.c to zenith-screen component
 - [ ] Zigbee HA
 - [ ] Core user interface
 - [ ] Node user interface
