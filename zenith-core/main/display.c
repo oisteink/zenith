@@ -130,6 +130,7 @@
      return false;
  }
  
+ // Not sure this is needed outside of setting rotation. It's called from flush, so each time we are updating screen. Seems like a waste to me...
  /* Rotate display and touch, when rotated screen in LVGL. Called when driver parameters are updated. */
  /* static void lvgl_port_update_callback(lv_display_t *disp)
  {
@@ -274,7 +275,7 @@
      };
      esp_timer_handle_t lvgl_tick_timer = NULL;
      ESP_ERROR_CHECK(esp_timer_create(&lvgl_tick_timer_args, &lvgl_tick_timer));
-     ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, LVGL_TICK_PERIOD_MS * 1000));
+     ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, LVGL_TICK_PERIOD_MS * 1000)); //parameter in microseconds
  
      ESP_LOGI(TAG, "Register io panel event callback for LVGL flush ready notification");
      const esp_lcd_panel_io_callbacks_t cbs = {

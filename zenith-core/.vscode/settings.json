@@ -6,6 +6,10 @@
     "esp_mac.h": "c",
     "esp_lcd_gc9a01.h": "c",
     "freertos.h": "c",
-    "lvgl.h": "c"
+    "lvgl.h": "c",
+    "display.h": "c",
+    "led_indicator.h": "c",
+    "zenith-blink.h": "c",
+    "zenith-blink-private.h": "c"
   }
 }
