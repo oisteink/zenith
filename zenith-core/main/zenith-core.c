@@ -32,6 +32,7 @@ static void core_rx_callback(const uint8_t *mac, const zenith_packet_t *packet)
 
         case PACKET_DATA:
             ESP_LOGI(TAG, "Sensor data received from "MACSTR" - Temp: %.1fC, Hum: %.1f%%", MAC2STR(mac), packet->sensor_data.temperature, packet->sensor_data.humidity);
+            display_update_values(packet->sensor_data.temperature, packet->sensor_data.humidity);
             break;
 
         default:

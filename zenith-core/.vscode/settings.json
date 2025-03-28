@@ -4,6 +4,8 @@
   "idf.flashType": "UART",
   "files.associations": {
     "esp_mac.h": "c",
-    "esp_lcd_gc9a01.h": "c"
+    "esp_lcd_gc9a01.h": "c",
+    "freertos.h": "c",
+    "lvgl.h": "c"
   }
 }
