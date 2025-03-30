@@ -10,7 +10,6 @@
 #include "zenith-now.h"
 #include "aht30.h"
 #include "zenith-blink.h"
-#include "zenith-sensor.h"
 
 /* zenith specific variables */
 static const char *TAG = "zenith-node";
