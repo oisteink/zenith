@@ -10,32 +10,57 @@
 #include "zenith-now.h"
 #include "aht30.h"
 #include "zenith-blink.h"
+#include "zenith-sensor.h"
 
 /* zenith specific variables */
 static const char *TAG = "zenith-node";
 static uint8_t node_peer[ESP_NOW_ETH_ALEN] = { 0 }; // peers mac address
 static TimerHandle_t node_measuring_timer = NULL;
 
+esp_err_t save_peer_mac(const uint8_t *mac) {
+    nvs_handle_t nvs;
+    esp_err_t err = nvs_open("zenith", NVS_READWRITE, &nvs);
+    if (err != ESP_OK) return err;
+
+    // Store MAC as binary blob
+    err = nvs_set_blob(nvs, "core_mac", mac, ESP_NOW_ETH_ALEN);
+    if (err == ESP_OK) err = nvs_commit(nvs);
+    nvs_close(nvs);
+    return err;
+}
+
+// Load MAC from NVS
+esp_err_t load_peer_mac(uint8_t *mac) {
+    nvs_handle_t nvs;
+    esp_err_t err = nvs_open("zenith", NVS_READONLY, &nvs);
+    if (err != ESP_OK) return err;
+
+    size_t len = ESP_NOW_ETH_ALEN;
+    err = nvs_get_blob(nvs, "core_mac", mac, &len);
+    nvs_close(nvs);
+    if (err == ESP_OK && len != ESP_NOW_ETH_ALEN) err = ESP_ERR_NVS_INVALID_LENGTH;
+    return err;
+}
+
 void configure_node_peer(void)
 {
     // Will load the peer from NVS in final code (stored on pairing), but for now just pair each time we start
-    // Start peering
-    esp_now_peer_info_t broadcast = {.channel = ZENITH_WIFI_CHANNEL, .encrypt = false, .ifidx = ESP_IF_WIFI_STA, .peer_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
-    ESP_ERROR_CHECK(esp_now_add_peer(&broadcast));
-    zenith_packet_t data_packet = {.type = PACKET_PAIRING};
-    // Send peering request
-    zenith_blink(BLINK_PAIRING);
-    zenith_send_data(broadcast.peer_addr, data_packet);
-    // wait for ack to appear in the event_group
-    while (!zenith_wait_for_ack(data_packet.type, 5000))
-    {
-        ESP_LOGI(TAG, "Sending peering request");
-        zenith_blink(BLINK_PAIRING);
-        zenith_send_data(broadcast.peer_addr, data_packet);
+    if (load_peer_mac(node_peer) != ESP_OK) {
+        // Start peering
+        esp_now_peer_info_t broadcast = {.channel = ZENITH_WIFI_CHANNEL, .encrypt = false, .ifidx = ESP_IF_WIFI_STA, .peer_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
+        ESP_ERROR_CHECK(esp_now_add_peer(&broadcast));
+        zenith_packet_t data_packet = {.type = PACKET_PAIRING};
+        // Send peering request
+        do {
+            ESP_LOGI(TAG, "Sending peering request");
+            zenith_blink(BLINK_PAIRING);
+            zenith_send_data(broadcast.peer_addr, data_packet);
+            // wait for peering ack
+        } while (!zenith_wait_for_ack(data_packet.type, 5000));
+        ESP_ERROR_CHECK(esp_now_del_peer(broadcast.peer_addr));
+        zenith_blink_stop(BLINK_PAIRING);
+        zenith_blink(BLINK_PAIRING_COMPLETE);
     }
-    ESP_ERROR_CHECK(esp_now_del_peer(broadcast.peer_addr));
-    zenith_blink_stop(BLINK_PAIRING);
-    zenith_blink(BLINK_PAIRING_COMPLETE);
 }
 
 void node_measuring_timer_cb(TimerHandle_t xTimer)
@@ -78,6 +103,7 @@ void node_rx_callback(const uint8_t *mac, const zenith_packet_t *packet)
             memcpy(peer.peer_addr, mac, ESP_NOW_ETH_ALEN);
             ESP_ERROR_CHECK(esp_now_add_peer(&peer));
             memcpy(node_peer, mac, ESP_NOW_ETH_ALEN);
+            ESP_ERROR_CHECK(save_peer_mac(mac));
             break;
         }
     }

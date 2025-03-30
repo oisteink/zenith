@@ -9,7 +9,12 @@
     "zenith-now.h": "c",
     "freertos.h": "c",
     "aht30.h": "c",
-    "zenith-blink-private.h": "c"
+    "zenith-blink-private.h": "c",
+    "zenith-sensor.h": "c",
+    "zenith-sensor-private.h": "c",
+    "esp_log.h": "c",
+    "esp_lcd_panel_sh1106.h": "c",
+    "esp_lcd_io_i2c.h": "c"
   },
   "idf.portWin": "COM5",
   "idf.flashType": "UART"
