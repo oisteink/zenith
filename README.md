@@ -30,17 +30,3 @@ idf.py set-target ESP32C6
 ifd.py menuconfig
 idf.py reconfigure
 ```
-
-## Todo
-
-In random order
-- [X] Get screen working
-- [ ] Adapt screen.c to zenith-screen component
-- [ ] Zigbee HA
-- [ ] Core user interface
-- [ ] Node user interface
-- [ ] Solid pairing
-- [ ] Changable configuraton
-- [ ] Saving config to NVS
-- [ ] Reset of device
-- [ ] Build / Project configuration
