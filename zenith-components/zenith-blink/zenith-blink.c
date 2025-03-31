@@ -1,9 +1,15 @@
 #include <stdio.h>
 #include "esp_err.h"
+#include "esp_log.h"
+
 #include "zenith-blink.h"
 #include "zenith-blink-private.h"
 
-void init_zenith_blink(gpio_num_t gpio_pin) {
+/// @brief Initialze the blink LED
+/// @param gpio_pin GPIO pin that the ws2812 is attached to
+/// @return ESP_OK
+esp_err_t init_zenith_blink(gpio_num_t gpio_pin) {
+    ESP_LOGI(TAG, "init_zenith_blink()");
     // Define the led strip config
     led_strip_config_t strip_config = {
         .strip_gpio_num = gpio_pin,
@@ -35,18 +41,21 @@ void init_zenith_blink(gpio_num_t gpio_pin) {
     };
 
     led_indicator = led_indicator_create(&config);
-    assert(led_indicator);
+    return (!led_indicator) ?  ESP_FAIL : ESP_OK;
 };
 
-void zenith_blink(led_indicator_blink_type_t blink_type){
-    ESP_ERROR_CHECK(led_indicator_start(led_indicator, blink_type));
+/// @brief Starts a blink indicator
+/// @param blink_type zenith blink indicator to start
+/// @return ESP_OK on success
+esp_err_t zenith_blink(led_indicator_blink_type_t blink_type){
+    ESP_LOGI(TAG, "zenith_blink()");
+    return led_indicator_start(led_indicator, blink_type);
 };
 
-void zenith_blink_stop(led_indicator_blink_type_t blink_type){
-    ESP_ERROR_CHECK(led_indicator_stop(led_indicator, blink_type));
-    ESP_ERROR_CHECK(led_indicator_set_on_off(led_indicator, false));
+/// @brief Stops a running blink indicator
+/// @param blink_type zenith blink indicator to stop
+/// @return ESP_OK on success
+esp_err_t zenith_blink_stop(led_indicator_blink_type_t blink_type){
+    ESP_LOGI(TAG, "zenith_blink_stop()");
+    return led_indicator_stop(led_indicator, blink_type);
 };
-
-void zenith_blink_off(void) {
-
-}

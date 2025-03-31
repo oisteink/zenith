@@ -11,6 +11,6 @@
 
 #define AHT30_SENSOR_ADDR  0x38
 
-void aht30_init(void);
+esp_err_t aht30_init(void);
 
 esp_err_t aht30_read_sensor(float *temperature, float *humidity);

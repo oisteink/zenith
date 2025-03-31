@@ -56,6 +56,9 @@
  lv_obj_t * lbl_temperature = NULL;
  lv_obj_t * lbl_humidity = NULL;
 
+ /// @brief Updates the display with new values for temperature and humidity
+ /// @param temperature New temperature value
+ /// @param humidity New humidity value
  void display_update_values(float temperature, float humidity) {
     char humidity_text[16], temperature_text[16];
     sprintf(humidity_text, "%.0f%%", humidity);
@@ -67,6 +70,8 @@
     _lock_release(&lvgl_api_lock);
 }
 
+ /// @brief Defines the LVGL User Interface
+ /// @param disp LVGL Display to use
  void lvgl_ui(lv_display_t *disp)
 {
     lv_obj_t *scr = lv_display_get_screen_active(disp);
@@ -123,6 +128,11 @@
     lv_obj_set_style_text_align(lbl_humidity, LV_TEXT_ALIGN_CENTER, 0);
 }
  
+ /// @brief Callback invoked when color data transfer has finished 
+ /// @param panel_io LCD panel IO handle
+ /// @param edata LCD panel IO event data
+ /// @param user_ctx Callback invoked when color data transfer has finished
+ /// @return always returns false
  static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
  {
      lv_display_t *disp = (lv_display_t *)user_ctx;
@@ -161,6 +171,10 @@
      }
  } */
  
+ /// @brief Callback which will be called to copy the rendered image to the display (buffer is flushed)
+ /// @param disp Display to paint on
+ /// @param area Area to paint
+ /// @param px_map Buffer containing the data to draw
  static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
  {
      //lvgl_port_update_callback(disp);
@@ -198,7 +212,7 @@
      }
  }
  
- void display_init(void)
+ esp_err_t display_init(void)
  {
      ESP_LOGI(TAG, "Initialize SPI bus");
      spi_bus_config_t buscfg = {
@@ -293,5 +307,6 @@
      _lock_acquire(&lvgl_api_lock);
      lvgl_ui(display);
      _lock_release(&lvgl_api_lock);
+     return ESP_OK;
  }
  

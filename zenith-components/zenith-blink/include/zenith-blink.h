@@ -1,6 +1,8 @@
 #pragma once
 
+#include "esp_err.h"
 #include "led_indicator.h"
+
 
 typedef enum led_indicator_blink_type {
     BLINK_DATA_SEND = 0,
@@ -10,6 +12,6 @@ typedef enum led_indicator_blink_type {
     BLINK_MAX
 } led_indicator_blink_type_t;
 
-void init_zenith_blink(gpio_num_t gpio_pin);
-void zenith_blink(led_indicator_blink_type_t blink_type);
-void zenith_blink_stop(led_indicator_blink_type_t blink_type);
+esp_err_t init_zenith_blink(gpio_num_t gpio_pin);
+esp_err_t zenith_blink(led_indicator_blink_type_t blink_type);
+esp_err_t zenith_blink_stop(led_indicator_blink_type_t blink_type);

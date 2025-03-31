@@ -1,14 +1,15 @@
 #include <stdio.h>
-#include "aht30.h"
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
+#include "aht30.h"
 
 static const char *TAG = "AHT30";
 static i2c_master_dev_handle_t aht30_handle;
 
 /// @brief Init the i2c bus and add the i2c device
-void aht30_init(void)
+esp_err_t aht30_init(void)
 {
+    ESP_LOGI(TAG, "aht30_init()");
     i2c_master_bus_handle_t bus_handle; // Ingen behov utover init, kan gjenfinnes med i2c_master_get_bus_handle()
     i2c_master_bus_config_t bus_config = {
         .i2c_port = I2C_MASTER_NUM,
@@ -26,10 +27,12 @@ void aht30_init(void)
         .scl_speed_hz = I2C_MASTER_FREQ_HZ,
     };
     ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_config, &aht30_handle));
+    return ESP_OK;
 }
 
 esp_err_t aht30_read_sensor(float *temperature, float *humidity)
 {
+    ESP_LOGI(TAG, "aht30_read_sensor()");
     // datasheet: http://www.aosong.com/userfiles/files/media/Data%20Sheet%20AHT20%20%20A2.pdf
     uint8_t data[6];
     uint8_t command[] = {0xAC, 0x33, 0x00}; //  0xAC command (trigger measurement). This command parameter has two bytes, the first byte is 0x33, and the second byte is 0x00

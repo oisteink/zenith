@@ -3,6 +3,7 @@
 #include "string.h"
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "nvs_flash.h"
 
 #include "zenith-now.h"
 #include "zenith-blink.h"
@@ -13,50 +14,49 @@
 
 static const char *TAG = "zenith-core";
 
-
-static void core_rx_callback(const uint8_t *mac, const zenith_packet_t *packet)
+/// @brief Receive callback function for Zenith Core
+/// @param mac Mac address of the sender of the packet received
+/// @param packet The packet received
+static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet)
 {
-    switch(packet->type) {
+    ESP_LOGI(TAG, "core_rx_callback()");
+    switch (packet->type)
+    {
         case PACKET_PAIRING:
-            ESP_LOGI(TAG, "Got new peer "MACSTR, MAC2STR(mac));
-            // Add peer
-            esp_now_peer_info_t peer = { .channel = ZENITH_WIFI_CHANNEL, .encrypt = false, .ifidx = ESP_IF_WIFI_STA };
-            memcpy(peer.peer_addr, mac, ESP_NOW_ETH_ALEN);
-            if (!esp_now_is_peer_exist(mac))  //handle existing peer
-            {
-                esp_err_t ret = esp_now_add_peer(&peer);
-                if (ret != ESP_OK) {
-                    ESP_LOGE(TAG, "Failed to add peer: %s", esp_err_to_name(ret));
-                    return;
-                }
-            }
+            zenith_now_add_peer(mac);
             // Send pairing ack
-            zenith_packet_t ack = {.type = PACKET_ACK, .ack_packet_type = PACKET_PAIRING};
-            zenith_send_data(mac, ack);
+            ESP_ERROR_CHECK(zenith_now_send_ack(mac, PACKET_PAIRING));
             zenith_blink(BLINK_PAIRING_COMPLETE);
             break;
 
         case PACKET_DATA:
             zenith_blink(BLINK_DATA_RECEIVE);
-            ESP_LOGI(TAG, "Sensor data received from "MACSTR" - Temp: %.1fC, Hum: %.1f%%", MAC2STR(mac), packet->sensor_data.temperature, packet->sensor_data.humidity);
+            // Add any missing peer for fault tolerance
+            zenith_now_add_peer(mac);
             display_update_values(packet->sensor_data.temperature, packet->sensor_data.humidity);
-            break;
-
-        default:
-            ESP_LOGE(TAG, "Received unhandled packet type: %s", zenith_packet_type_to_str(packet->type));
+            ESP_ERROR_CHECK(zenith_now_send_ack(mac, PACKET_DATA));
             break;
     }
 }
 
-
-
 void app_main(void)
 {
-    display_init();
-    init_zenith_blink(WS2812_GPIO);
+    ESP_LOGI(TAG, "app_main()");
+    // Initialize default NVS partition
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        // Itsa fucked - erase and retry
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+
+    ESP_ERROR_CHECK(display_init());
+    ESP_ERROR_CHECK(init_zenith_blink(WS2812_GPIO));
     // Initialize Zenith with default configuration
-    configure_zenith(core_rx_callback, NULL);
- 
+    ESP_ERROR_CHECK(configure_zenith_now(core_rx_callback, NULL));
+
     // Staying alive!
     vTaskDelay(portMAX_DELAY);
 }
