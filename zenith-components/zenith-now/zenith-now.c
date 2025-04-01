@@ -249,6 +249,7 @@ esp_err_t configure_zenith_now(zenith_rx_cb_t rx_cb, zenith_tx_cb_t tx_cb)
     ESP_LOGI(TAG, "configure_zenith_now()");
     user_rx_cb = rx_cb;
     user_tx_cb = tx_cb;
+    
     // Create queue
     zenith_now_event_queue = xQueueCreate(10, sizeof(zenith_now_event_t));
     if (!zenith_now_event_queue)
@@ -263,7 +264,18 @@ esp_err_t configure_zenith_now(zenith_rx_cb_t rx_cb, zenith_tx_cb_t tx_cb)
         ESP_LOGE(TAG, "Error creating zenith_now_event_group");
         return ESP_FAIL;
     }
-    esp_err_t err = zenith_now_configure_wifi();
+
+    // Initialize default NVS partition
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        // Itsa fucked - erase and retry
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+    // Configure WiFi
+    err = zenith_now_configure_wifi();
     if (err == ESP_OK)
         err = zenith_now_configure_espnow();
     if (err == ESP_OK)
