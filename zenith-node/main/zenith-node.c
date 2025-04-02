@@ -31,7 +31,7 @@ void pair_with_core(void)
 {
     uint8_t broadcast[ESP_NOW_ETH_ALEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
     ESP_ERROR_CHECK(zenith_now_add_peer(broadcast)); // Add broadcast peer
-    zenith_now_packet_t data_packet = { .type = PACKET_PAIRING }; // Create pairing packet
+    zenith_now_packet_t data_packet = { .type = ZENITH_PACKET_PAIRING}; // Create pairing packet
     uint8_t peering_tries = 0; // initialize counter for pairing retries
     do
     {
@@ -40,7 +40,7 @@ void pair_with_core(void)
         ESP_ERROR_CHECK(zenith_blink(BLINK_PAIRING)); // Blink to show we are trying to pair
         ESP_ERROR_CHECK(zenith_now_send_packet(broadcast, data_packet)); // Send the pairing request
     } 
-    while (zenith_now_wait_for_ack(PACKET_PAIRING, 5000) != ESP_OK); // Wait 5 seconds for ack, and retry if we timed out
+    while (zenith_now_wait_for_ack(ZENITH_PACKET_PAIRING, 5000) != ESP_OK); // Wait 5 seconds for ack, and retry if we timed out
     ESP_ERROR_CHECK(zenith_now_remove_peer(broadcast)); // Remove broadcast peer
     while (!saved_peer())  // Wait for node_peer to be stored. 
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -51,11 +51,11 @@ void pair_with_core(void)
 void send_data(void) {
     // Set up the sensor
     ESP_ERROR_CHECK(aht30_init()); // Initialize sensor
-    zenith_now_packet_t data_packet = { .type = PACKET_DATA }; // Initialize data packet
+    zenith_now_packet_t data_packet = { .type = ZENITH_PACKET_DATA }; // Initialize data packet
     ESP_ERROR_CHECK(aht30_read_sensor(&data_packet.sensor_data.temperature, &data_packet.sensor_data.humidity)); // Read sensor data into data packet
     ESP_ERROR_CHECK(zenith_now_add_peer(node_peer));
     ESP_ERROR_CHECK(zenith_now_send_packet(node_peer, data_packet)); // Send data packet
-    failed_sends = (zenith_now_wait_for_ack(PACKET_DATA, 2000) == ESP_OK) ? 0 : failed_sends + 1; // If we don't get ack, increase number of failed sends
+    failed_sends = (zenith_now_wait_for_ack(ZENITH_PACKET_DATA, 2000) == ESP_OK) ? 0 : failed_sends + 1; // If we don't get ack, increase number of failed sends
     if (failed_sends >= 5) { 
         memset(node_peer, 0, ESP_NOW_ETH_ALEN); // Clear peer address
         failed_sends = 0; // Clear failed sends
@@ -70,13 +70,13 @@ void node_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet)
 {
     switch (packet->type)
     {
-        case PACKET_ACK:
+        case ZENITH_PACKET_ACK:
             switch (packet->ack_packet_type)
             {
-                case PACKET_PAIRING:                    
+                case ZENITH_PACKET_PAIRING:                    
                     memcpy(node_peer, mac, ESP_NOW_ETH_ALEN); // Store peer mac in RTC memory
                     break;
-                case PACKET_DATA:
+                case ZENITH_PACKET_DATA:
                     failed_sends = 0; // Extra handling of late ack. Need a bit of luck for this to trigger after the send times out and before the deep_sleep starts.
             }
     }
@@ -91,7 +91,8 @@ void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(30000));
     }
     ESP_ERROR_CHECK(init_zenith_blink(GPIO_NUM_8)); // Initialize blink LED and abort if it fails
-    ESP_ERROR_CHECK(configure_zenith_now(node_rx_callback, NULL)); // Set up zenith-now and abort if it fails
+    ESP_ERROR_CHECK(configure_zenith_now()); // Set up zenith-now and abort if it fails
+    zenith_now_set_rx_cb(node_rx_callback);
     if (!saved_peer()) // Check for paired core
         pair_with_core(); // Pair with core
     send_data(); // Send the data

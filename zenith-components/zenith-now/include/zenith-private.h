@@ -3,6 +3,5 @@
 static const char *zenith_now_packet_type_str[] = {
     "Pairing",
     "Data",
-    "Ping",
     "ACK"};
 

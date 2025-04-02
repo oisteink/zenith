@@ -39,10 +39,10 @@ esp_err_t zenith_now_serialize_data(const zenith_now_packet_t *data, uint8_t **s
     *size = 1;
     switch (data->type)
     {
-    case PACKET_DATA:
+    case ZENITH_PACKET_DATA:
         *size += SENSOR_DATA_SIZE * 2;
         break;
-    case PACKET_ACK:
+    case ZENITH_PACKET_ACK:
         *size += 1;
         break;
     }
@@ -53,11 +53,11 @@ esp_err_t zenith_now_serialize_data(const zenith_now_packet_t *data, uint8_t **s
     (*serialized_data)[0] = data->type;
     switch (data->type)
     {
-    case PACKET_DATA:
+    case ZENITH_PACKET_DATA:
         memcpy(*serialized_data + 1, &data->sensor_data.temperature, SENSOR_DATA_SIZE);
         memcpy(*serialized_data + 1 + SENSOR_DATA_SIZE, &data->sensor_data.humidity, SENSOR_DATA_SIZE);
         break;
-    case PACKET_ACK:
+    case ZENITH_PACKET_ACK:
         (*serialized_data)[1] = data->ack_packet_type;
         break;
     }
@@ -73,14 +73,14 @@ zenith_now_packet_t zenith_now_deserialize_data(const uint8_t *serialized_data, 
     data.type = serialized_data[0];
     switch (data.type)
     {
-    case PACKET_DATA:
+    case ZENITH_PACKET_DATA:
         if (len >= SENSOR_DATA_SIZE * 2 + 1)
         {
             memcpy(&data.sensor_data.temperature, &serialized_data[1], SENSOR_DATA_SIZE);
             memcpy(&data.sensor_data.humidity, &serialized_data[1 + SENSOR_DATA_SIZE], SENSOR_DATA_SIZE);
         }
         break;
-    case PACKET_ACK:
+    case ZENITH_PACKET_ACK:
         if (len >= 2)
         {
             data.ack_packet_type = serialized_data[1];
@@ -94,7 +94,7 @@ zenith_now_packet_t zenith_now_deserialize_data(const uint8_t *serialized_data, 
 
 const char *zenith_now_packet_type_to_str(zenith_now_packet_type_t packet_type)
 {
-    if (packet_type < PACKET_PAIRING || packet_type > PACKET_ACK)
+    if (packet_type < ZENITH_PACKET_PAIRING || packet_type >= ZENITH_PACKET_MAX)
     {
         return "Unknown";
     }
@@ -114,14 +114,11 @@ esp_err_t zenith_now_wait_for_ack(zenith_now_packet_type_t packet_type, uint32_t
     EventBits_t event_bit = 0;
     switch (packet_type)
     {
-    case PACKET_PAIRING:
+    case ZENITH_PACKET_PAIRING:
         event_bit = PAIRING_ACK_BIT;
         break;
-    case PACKET_DATA:
+    case ZENITH_PACKET_DATA:
         event_bit = DATA_ACK_BIT;
-        break;
-    case PACKET_PING:
-        event_bit = PING_ACK_BIT;
         break;
     default:
         ESP_LOGE(TAG, "Illegal packet type for ACK");
@@ -133,7 +130,7 @@ esp_err_t zenith_now_wait_for_ack(zenith_now_packet_type_t packet_type, uint32_t
 esp_err_t zenith_now_send_ack(const uint8_t *peer_addr, zenith_now_packet_type_t packet_type)
 {
     ESP_LOGI(TAG, "zenith_now_send_ack()");
-    zenith_now_packet_t ack = {.type = PACKET_ACK, .ack_packet_type = packet_type};
+    zenith_now_packet_t ack = {.type = ZENITH_PACKET_ACK, .ack_packet_type = packet_type};
     zenith_now_send_packet(peer_addr, ack);
     return ESP_OK;
 }
@@ -194,20 +191,13 @@ static void zenith_now_event_handler(void *pvParameters)
         case RECEIVE_EVENT:
             switch (event.receive.data_packet.type)
             {
-            case PACKET_PING:
-                zenith_now_packet_t ack = {.type = PACKET_ACK, .ack_packet_type = PACKET_PING};
-                zenith_now_send_packet(event.receive.source_mac, ack);
-                break;
-            case PACKET_ACK:
+            case ZENITH_PACKET_ACK:
                 switch (event.receive.data_packet.ack_packet_type)
                 {
-                case PACKET_DATA:
+                case ZENITH_PACKET_DATA:
                     xEventGroupSetBits(zenith_now_event_group, DATA_ACK_BIT);
                     break;
-                case PACKET_PING:
-                    xEventGroupSetBits(zenith_now_event_group, PING_ACK_BIT);
-                    break;
-                case PACKET_PAIRING:
+                case ZENITH_PACKET_PAIRING:
                     xEventGroupSetBits(zenith_now_event_group, PAIRING_ACK_BIT);
                     break;
                 default:
@@ -244,11 +234,17 @@ esp_err_t zenith_now_remove_peer(const uint8_t *mac)
     return err;
 }
 
-esp_err_t configure_zenith_now(zenith_rx_cb_t rx_cb, zenith_tx_cb_t tx_cb)
+void zenith_now_set_rx_cb(zenith_rx_cb_t rx_cb) {
+    user_rx_cb = rx_cb;
+}
+
+void zenith_now_set_tx_cb(zenith_tx_cb_t tx_cb) {
+    user_tx_cb = tx_cb;
+}
+
+esp_err_t configure_zenith_now(void)
 {
     ESP_LOGI(TAG, "configure_zenith_now()");
-    user_rx_cb = rx_cb;
-    user_tx_cb = tx_cb;
     
     // Create queue
     zenith_now_event_queue = xQueueCreate(10, sizeof(zenith_now_event_t));

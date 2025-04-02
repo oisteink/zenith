@@ -12,10 +12,10 @@ typedef struct zenith_now_sensor_data {
 } zenith_now_sensor_data_t;
 
 typedef enum zenith_now_packet_type {
-    PACKET_PAIRING = 1, // Pairing Request
-    PACKET_DATA,        // Sensor data
-    PACKET_PING,        // Ping packet
-    PACKET_ACK          // Acknowledgment for other packet types
+    ZENITH_PACKET_PAIRING = 1, // Pairing Request
+    ZENITH_PACKET_DATA,        // Sensor data
+    ZENITH_PACKET_ACK,          // Acknowledgment for other packet types
+    ZENITH_PACKET_MAX
 } zenith_now_packet_type_t;
 
 typedef struct zenith_now_packet {
@@ -60,13 +60,14 @@ typedef void (*zenith_tx_cb_t)(const uint8_t *mac, esp_now_send_status_t status)
 #define ZENITH_WIFI_CHANNEL 1
 #define PAIRING_ACK_BIT BIT0
 #define DATA_ACK_BIT BIT1
-#define PING_ACK_BIT BIT3
 #define SENSOR_DATA_SIZE (sizeof(zenith_now_sensor_datatype_t))
 
 extern QueueHandle_t zenith_now_event_queue;
 extern EventGroupHandle_t zenith_now_event_group;
 
-esp_err_t configure_zenith_now(zenith_rx_cb_t rx_cb, zenith_tx_cb_t tx_cb);
+esp_err_t configure_zenith_now(void);
+void zenith_now_set_rx_cb(zenith_rx_cb_t rx_cb);
+void zenith_now_set_tx_cb(zenith_tx_cb_t tx_cb);
 esp_err_t zenith_now_add_peer(const uint8_t * mac);
 esp_err_t zenith_now_remove_peer(const uint8_t *mac);
 esp_err_t zenith_now_send_packet(const uint8_t *peer_addr, const zenith_now_packet_t data_packet);

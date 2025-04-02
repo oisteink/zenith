@@ -12,5 +12,8 @@
     "zenith-blink.h": "c",
     "zenith-blink-private.h": "c",
     "zenith-now.h": "c"
-  }
+  },
+  "idf.espIdfPathWin": "D:/Espressif/frameworks/esp-idf/",
+  "idf.toolsPathWin": "D:\\Espressif",
+  "idf.pythonInstallPath": "D:\\Espressif\\tools\\idf-python\\3.11.2\\python.exe"
 }
