@@ -1,5 +1,7 @@
 #pragma once
 
+//#define ZNDEBUG 1
+
 #include "freertos/FreeRTOS.h"
 #include "esp_now.h"
 

@@ -9,7 +9,9 @@
 /// @param gpio_pin GPIO pin that the ws2812 is attached to
 /// @return ESP_OK
 esp_err_t init_zenith_blink(gpio_num_t gpio_pin) {
+    #ifdef ZBDEBUG
     ESP_LOGI(TAG, "init_zenith_blink()");
+    #endif
     // Define the led strip config
     led_strip_config_t strip_config = {
         .strip_gpio_num = gpio_pin,
@@ -48,7 +50,9 @@ esp_err_t init_zenith_blink(gpio_num_t gpio_pin) {
 /// @param blink_type zenith blink indicator to start
 /// @return ESP_OK on success
 esp_err_t zenith_blink(led_indicator_blink_type_t blink_type){
+    #ifdef ZBDEBUG
     ESP_LOGI(TAG, "zenith_blink()");
+    #endif
     return led_indicator_start(led_indicator, blink_type);
 };
 
@@ -56,6 +60,8 @@ esp_err_t zenith_blink(led_indicator_blink_type_t blink_type){
 /// @param blink_type zenith blink indicator to stop
 /// @return ESP_OK on success
 esp_err_t zenith_blink_stop(led_indicator_blink_type_t blink_type){
+    #ifdef ZBDEBUG
     ESP_LOGI(TAG, "zenith_blink_stop()");
+    #endif
     return led_indicator_stop(led_indicator, blink_type);
 };

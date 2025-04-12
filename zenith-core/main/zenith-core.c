@@ -9,7 +9,7 @@
 #include "zenith-blink.h"
 
 #include "zenith-core.h"
-#include "display.h"
+#include "zenith_ui_core.h"
 
 #define WS2812_GPIO GPIO_NUM_8
 
@@ -62,24 +62,32 @@ esp_err_t nvs_load_paired_nodes(void) {
             err = ESP_OK; 
         }
         node_count = nvs_nodes.count;
+        ESP_LOGI(TAG, "Loading %i nodes", node_count);
         for (uint8_t i = 0; i < nvs_nodes.count && err == ESP_OK; i++) {
             memcpy(nodes[i].mac, nvs_nodes.macs[i], ESP_NOW_ETH_ALEN);
             err = zenith_now_add_peer(nodes[i].mac);
+            if (err == ESP_OK)
+                ESP_LOGI(TAG, "Added: "MACSTR, MAC2STR(nodes[i].mac));
         }
         nvs_close(handle);
-        ESP_LOGI(TAG, "Loaded %i nodes", node_count);
     }
     return err;
 }
 
-esp_err_t core_add_new_peer(const uint8_t *mac_addr) {
-    // Check if already paired
+bool core_is_peer_exists(const uint8_t *mac_addr)
+{
     for (int i = 0; i < node_count; i++) {
         if (memcmp(mac_addr, nodes[i].mac, 6) == 0) {
-            return ESP_OK; // Already paired, re-pairing is OK
+            return true;
         }
     }
+    return false;
+}
 
+esp_err_t core_add_new_peer(const uint8_t *mac_addr) {
+    // Check if already paired
+    if (core_is_peer_exists(mac_addr))
+        return ESP_OK;
     // Add new node
     if (node_count >= MAX_NODES) 
         return ESP_ERR_NO_MEM; // Max nodes reached
@@ -96,6 +104,8 @@ esp_err_t core_add_new_peer(const uint8_t *mac_addr) {
         // save to nvs
         err = nvs_save_paired_nodes();
     }    
+    if (err == ESP_OK)
+        ESP_LOGI(TAG, "Added new node: "MACSTR, MAC2STR(mac_addr));
     return err; 
 }
 
@@ -104,7 +114,6 @@ esp_err_t core_add_new_peer(const uint8_t *mac_addr) {
 /// @param packet The packet received
 static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet)
 {
-    ESP_LOGI(TAG, "core_rx_callback()");
     switch (packet->type)
     {
         case ZENITH_PACKET_PAIRING:
@@ -115,21 +124,43 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
             break;
 
         case ZENITH_PACKET_DATA:
+            if (!core_is_peer_exists(mac))
+            {
+                zenith_blink(BLINK_DATA_UNKNOWN_PEER);
+                break;
+            }
             zenith_blink(BLINK_DATA_RECEIVE);
-            display_update_values(packet->sensor_data.temperature, packet->sensor_data.humidity);
+            ESP_LOGI(TAG, "Received data from "MACSTR" : %.2f°  %.2f%%", MAC2STR(mac), packet->sensor_data.temperature, packet->sensor_data.humidity);
+            //display_update_values(packet->sensor_data.temperature, packet->sensor_data.humidity);
             ESP_ERROR_CHECK(zenith_now_send_ack(mac, ZENITH_PACKET_DATA));
             break;
     }
 }
 
-void app_main(void)
+ void app_main(void)
 {
     ESP_LOGI(TAG, "app_main()");
     // Initialize default NVS partition
     ESP_ERROR_CHECK(initialize_nvs());
 
     // Initialize display and load UI
-    ESP_ERROR_CHECK(display_init());
+    zenith_ui_config_t ui_config = {
+        .spi_host = SPI2_HOST,
+        .sclk_pin = GPIO_NUM_6,
+        .mosi_pin = GPIO_NUM_7,
+        .miso_pin = GPIO_NUM_2,
+
+        .lcd_backlight_pin = GPIO_NUM_21,
+        .lcd_cs_pin = GPIO_NUM_18,
+        .lcd_dc_pin = GPIO_NUM_20,
+        .lcd_reset_pin = GPIO_NUM_19,
+
+        .touch_cs_pin = GPIO_NUM_22,
+        .touch_irq_pin = GPIO_NUM_NC,
+    };
+    zenith_ui_handle_t core_ui_handle = NULL;
+    ESP_ERROR_CHECK(zenith_ui_new_core(&ui_config, &core_ui_handle));
+    zenith_ui_core_fade_lcd_brightness(75, 1500);
 
     // Initialize blinker
     ESP_ERROR_CHECK(init_zenith_blink(WS2812_GPIO));
@@ -144,4 +175,4 @@ void app_main(void)
 
     // Staying alive!
     vTaskDelay(portMAX_DELAY);
-}
+} 

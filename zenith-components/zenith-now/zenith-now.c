@@ -18,7 +18,9 @@ static zenith_tx_cb_t user_tx_cb = NULL;
 
 esp_err_t zenith_now_configure_wifi(void)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_configure_wifi()");
+    #endif
     esp_err_t err = esp_netif_init();
     if (err == ESP_OK) err = esp_event_loop_create_default();
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -34,7 +36,9 @@ esp_err_t zenith_now_configure_wifi(void)
 
 esp_err_t zenith_now_serialize_data(const zenith_now_packet_t *data, uint8_t **serialized_data, uint8_t *size)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_Serialize_data()");
+    #endif
     // set size
     *size = 1;
     switch (data->type)
@@ -66,7 +70,9 @@ esp_err_t zenith_now_serialize_data(const zenith_now_packet_t *data, uint8_t **s
 
 zenith_now_packet_t zenith_now_deserialize_data(const uint8_t *serialized_data, int len)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_deserialize_data()");
+    #endif
     assert(len >= 1); // We need at least 1 byte
     // Unpack data from serialized_data into packet
     zenith_now_packet_t data = {0};
@@ -110,7 +116,9 @@ const char *zenith_now_packet_type_to_str(zenith_now_packet_type_t packet_type)
 /// @return ESP_OK if ack was received, ESP_ERR_TIMEOUT if timed out
 esp_err_t zenith_now_wait_for_ack(zenith_now_packet_type_t packet_type, uint32_t wait_ms)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_wait_for_ack()");
+    #endif
     EventBits_t event_bit = 0;
     switch (packet_type)
     {
@@ -129,7 +137,9 @@ esp_err_t zenith_now_wait_for_ack(zenith_now_packet_type_t packet_type, uint32_t
 
 esp_err_t zenith_now_send_ack(const uint8_t *peer_addr, zenith_now_packet_type_t packet_type)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_send_ack()");
+    #endif
     zenith_now_packet_t ack = {.type = ZENITH_PACKET_ACK, .ack_packet_type = packet_type};
     zenith_now_send_packet(peer_addr, ack);
     return ESP_OK;
@@ -137,7 +147,9 @@ esp_err_t zenith_now_send_ack(const uint8_t *peer_addr, zenith_now_packet_type_t
 
 esp_err_t zenith_now_send_packet(const uint8_t *peer_addr, const zenith_now_packet_t data_packet)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_Send_packet()");
+    #endif
     uint8_t data_size = 0;
     uint8_t *data = NULL;
     esp_err_t err = zenith_now_serialize_data(&data_packet, &data, &data_size);
@@ -150,7 +162,9 @@ esp_err_t zenith_now_send_packet(const uint8_t *peer_addr, const zenith_now_pack
 
 static void zenith_now_espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_espnow_send_cb()");
+    #endif
     zenith_now_event_t event = {.type = SEND_EVENT, .send.status = status};
     memcpy(&event.send.dest_mac, mac_addr, ESP_NOW_ETH_ALEN);
     xQueueSend(zenith_now_event_queue, &event, 0); // Should perhaps wait some tics, but there shouldn't be many packets in the queue and there's room for 10.
@@ -158,7 +172,9 @@ static void zenith_now_espnow_send_cb(const uint8_t *mac_addr, esp_now_send_stat
 
 static void zenith_now_espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_espnow_recv_cb");
+    #endif
     zenith_now_event_t event = {.type = RECEIVE_EVENT, .receive.data_packet = zenith_now_deserialize_data(data, len)};
     memcpy(&event.receive.source_mac, recv_info->src_addr, ESP_NOW_ETH_ALEN);
     xQueueSend(zenith_now_event_queue, &event, 0); // Should perhaps wait some tics, but there shouldn't be many packets in the queue and there's room for 10.
@@ -166,7 +182,9 @@ static void zenith_now_espnow_recv_cb(const esp_now_recv_info_t *recv_info, cons
 
 esp_err_t zenith_now_configure_espnow(void)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_configure_espnow()");
+    #endif
     esp_err_t err = esp_now_init();
     if (err == ESP_OK)
         err = esp_now_register_send_cb(zenith_now_espnow_send_cb);
@@ -177,7 +195,9 @@ esp_err_t zenith_now_configure_espnow(void)
 
 static void zenith_now_event_handler(void *pvParameters)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_event_handler()");
+    #endif
     zenith_now_event_t event;
     while (xQueueReceive(zenith_now_event_queue, &event, portMAX_DELAY) == pdTRUE)
     {
@@ -216,7 +236,9 @@ static void zenith_now_event_handler(void *pvParameters)
 
 esp_err_t zenith_now_add_peer(const uint8_t *mac)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_add_peer()");
+    #endif
     esp_err_t err = ESP_OK; //It's ok to try and add existing peers
     if (!esp_now_is_peer_exist(mac)) {
         esp_now_peer_info_t peer = {.peer_addr = {0}, .channel = ZENITH_WIFI_CHANNEL, .encrypt = false, .ifidx = ESP_IF_WIFI_STA};
@@ -228,7 +250,9 @@ esp_err_t zenith_now_add_peer(const uint8_t *mac)
 
 esp_err_t zenith_now_remove_peer(const uint8_t *mac)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_remove_peer()");
+    #endif
     esp_err_t err = ESP_OK; //It's ok to try and remove non-existant peers
     if (esp_now_is_peer_exist(mac)) err = esp_now_del_peer(mac);
     return err;
@@ -244,7 +268,9 @@ void zenith_now_set_tx_cb(zenith_tx_cb_t tx_cb) {
 
 esp_err_t configure_zenith_now(void)
 {
+    #ifdef ZNDEBUG
     ESP_LOGI(TAG, "configure_zenith_now()");
+    #endif
     
     // Create queue
     zenith_now_event_queue = xQueueCreate(10, sizeof(zenith_now_event_t));

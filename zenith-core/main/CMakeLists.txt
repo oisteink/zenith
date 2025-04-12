@@ -1,2 +1,2 @@
-idf_component_register(SRCS "display.c" "zenith-core.c"
+idf_component_register(SRCS "zenith-core.c"
                     INCLUDE_DIRS ".")

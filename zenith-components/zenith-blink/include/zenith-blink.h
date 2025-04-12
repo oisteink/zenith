@@ -1,5 +1,7 @@
 #pragma once
 
+//#define ZBDEBUG 1
+
 #include "esp_err.h"
 #include "led_indicator.h"
 
@@ -7,6 +9,7 @@
 typedef enum led_indicator_blink_type {
     BLINK_DATA_SEND = 0,
     BLINK_DATA_RECEIVE,
+    BLINK_DATA_UNKNOWN_PEER,
     BLINK_PAIRING,
     BLINK_PAIRING_COMPLETE,
     BLINK_MAX

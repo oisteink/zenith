@@ -11,7 +11,8 @@
     "led_indicator.h": "c",
     "zenith-blink.h": "c",
     "zenith-blink-private.h": "c",
-    "zenith-now.h": "c"
+    "zenith-now.h": "c",
+    "esp_lcd_ili9488.h": "c"
   },
   "idf.espIdfPathWin": "D:/Espressif/frameworks/esp-idf/",
   "idf.toolsPathWin": "D:\\Espressif",
