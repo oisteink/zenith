@@ -13,7 +13,7 @@
 
 #include "zenith-node.h"
 
-#include "aht30.h"
+#include "zenith_sensor_aht30.h"
 #include "zenith_sensor.h"
 
 /* zenith specific variables */
@@ -73,7 +73,7 @@ void send_data(void) {
     // Set up the sensor
     init_sensor();
     zenith_now_packet_t data_packet = { .type = ZENITH_PACKET_DATA }; // Initialize data packet
-    ESP_ERROR_CHECK(aht30_read_sensor(&data_packet.sensor_data.temperature, &data_packet.sensor_data.humidity)); // Read sensor data into data packet
+    //ESP_ERROR_CHECK(aht30_read_sensor(&data_packet.sensor_data.temperature, &data_packet.sensor_data.humidity)); // Read sensor data into data packet
     ESP_ERROR_CHECK(zenith_now_add_peer(node_peer));
     ESP_ERROR_CHECK(zenith_now_send_packet(node_peer, data_packet)); // Send data packet
     failed_sends = (zenith_now_wait_for_ack(ZENITH_PACKET_DATA, 2000) == ESP_OK) ? 0 : failed_sends + 1; // If we don't get ack, increase number of failed sends

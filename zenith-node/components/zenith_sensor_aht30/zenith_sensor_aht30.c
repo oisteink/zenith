@@ -1,10 +1,28 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "esp_log.h"
-#include "aht30.h"
+#include "esp_err.h"
+#include "esp_check.h"
+#include "zenith_sensor_aht30.h"
 
 static const char *TAG = "AHT30";
-static i2c_master_dev_handle_t aht30_handle;
+
+esp_err_t zenith_sensor_new_ath30( i2c_master_bus_handle_t i2c_bus, zenith_sensor_aht30_config_t *config, zenith_sensor_handle_t *handle)
+{
+    esp_err_t ret = ESP_OK;
+    ESP_RETURN_ON_FALSE(
+        config || handle,
+        ESP_ERR_INVALID_ARG,
+        TAG, "Invalid arguments passed to new_aht30"
+    );
+
+
+    return ret;
+}
+
+/* static i2c_master_dev_handle_t aht30_handle;
+
+
 
 /// @brief Init the i2c bus and add the i2c device
 esp_err_t aht30_init(i2c_master_bus_handle_t bus_handle, aht30_sensor_handle_t * handle);
@@ -41,3 +59,4 @@ esp_err_t aht30_read_sensor(float *temperature, float *humidity)
     *temperature = ((float) raw_temperature / 1048576) * 200 - 50;
     return ESP_OK;
 }
+ */

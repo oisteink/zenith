@@ -1,40 +1,38 @@
 #include <stdio.h>
-#include "zenith_sensor.h"
 #include "esp_check.h"
+#include "zenith_sensor.h"
 
 static const char *TAG = "zenith_sensor";
 
-
-// Move this to zenith_sensor_new_ath30()
-/* esp_err_t zenith_sensor_create( zenith_sensor_config_t* config, zenith_sensor_handle_t* handle )
-{
-    // Sanity checks will come here
-    
-    zenith_sensor_handle_t sensor = calloc(1, sizeof(zenith_sensor_t));
+esp_err_t zenith_sensor_read_temperature(zenith_sensor_handle_t sensor, int16_t *out_temp) {
+    esp_err_t ret;
     ESP_RETURN_ON_FALSE(
-        sensor,
-        ESP_ERR_NO_MEM,
-        TAG, "Error creating sensor handle"
+        sensor || out_temp || !sensor->read_temperature,
+        ESP_ERR_INVALID_ARG,
+        TAG, "Invalid arguments passed to read_temperature"
     );
-
-    sensor->sensor_type = config->sensor_type;
-
-    switch (sensor->sensor_type)
-    {
-        case SENSOR_ATH30:
-            aht30_init(config->i2c_bus_handle);
-            break;
-        case SENSOR_BMP280:
-            sensor->sensor_handle.bmp280 = bmp280_create(config->i2c_bus_handle, 0x78);
-            break;
-        default:
-            ret = ESP_ERR_NOT_SUPPORTED; // Enum that lacks implementation?
-            free( sensor );
-            sensor = NULL;
-            break; 
-    }
-
-    *handle = sensor;
+    ret = sensor->read_temperature(sensor, out_temp);
     return ret;
 }
- */
+
+esp_err_t zenith_sensor_read_humidity(zenith_sensor_handle_t sensor, int16_t *out_humidity) {
+    esp_err_t ret;
+    ESP_RETURN_ON_FALSE(
+        sensor || out_humidity || !sensor->read_humidity,
+        ESP_ERR_INVALID_ARG,
+        TAG, "Invalid arguments passed to read humidity"
+    );
+    ret = sensor->read_humidity(sensor, out_humidity);
+    return ret;
+}
+
+esp_err_t zenith_sensor_read_pressure(zenith_sensor_handle_t sensor, int16_t *out_pressure) {
+    esp_err_t ret;
+    ESP_RETURN_ON_FALSE(
+        sensor || out_pressure || sensor->read_pressure,
+        ESP_ERR_INVALID_ARG,
+        TAG, "Invalid arguments passed to pressure"
+    );
+    ret = sensor->read_pressure(sensor, out_pressure);
+    return ret;
+}
