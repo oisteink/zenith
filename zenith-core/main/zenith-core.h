@@ -13,7 +13,7 @@ typedef struct node_data {
 
 typedef struct nvs_node_data {
     uint8_t count;
-    uint8_t macs[MAX_NODES][ESP_NOW_ETH_ALEN];
+    uint8_t macs[10][ESP_NOW_ETH_ALEN];
 } nvs_node_data_t;
 
 

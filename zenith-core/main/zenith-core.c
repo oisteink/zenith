@@ -10,12 +10,13 @@
 
 #include "zenith-core.h"
 #include "zenith_ui_core.h"
+#include "zenith_registry.h"
 
 #define WS2812_GPIO GPIO_NUM_8
 
 static const char *TAG = "zenith-core";
 
-static node_data_t nodes[MAX_NODES] = {0}; 
+static node_data_t nodes[10] = {0}; 
 static uint8_t node_count = 0;
 
 esp_err_t initialize_nvs(void){
@@ -89,7 +90,7 @@ esp_err_t core_add_new_peer(const uint8_t *mac_addr) {
     if (core_is_peer_exists(mac_addr))
         return ESP_OK;
     // Add new node
-    if (node_count >= MAX_NODES) 
+    if (node_count >= 10) 
         return ESP_ERR_NO_MEM; // Max nodes reached
 
     // add peer to esp_now
