@@ -18,9 +18,17 @@
     "string.h": "c",
     "strings.h": "c",
     "zenith_node_registry.h": "c",
-    "zenith_registry.h": "c"
+    "zenith_registry.h": "c",
+    "esp_lcd_panel_interface.h": "c",
+    "esp_lcd_panel_io.h": "c",
+    "esp_lcd_panel_vendor.h": "c",
+    "esp_lcd_panel_ops.h": "c"
   },
   "idf.espIdfPathWin": "D:/Espressif/frameworks/esp-idf/",
   "idf.toolsPathWin": "D:\\Espressif",
-  "idf.pythonInstallPath": "D:\\Espressif\\tools\\idf-python\\3.11.2\\python.exe"
+  "idf.pythonInstallPath": "D:\\Espressif\\tools\\idf-python\\3.11.2\\python.exe",
+  "C_Cpp.vcFormat.space.withinExpressionParentheses": true,
+  "C_Cpp.vcFormat.space.withinParameterListParentheses": true,
+  "C_Cpp.vcFormat.space.withinControlFlowStatementParentheses": true,
+  "C_Cpp.vcFormat.space.afterCastCloseParenthesis": true
 }

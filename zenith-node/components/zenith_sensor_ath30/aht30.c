@@ -7,20 +7,11 @@ static const char *TAG = "AHT30";
 static i2c_master_dev_handle_t aht30_handle;
 
 /// @brief Init the i2c bus and add the i2c device
-esp_err_t aht30_init(void)
+esp_err_t aht30_init(i2c_master_bus_handle_t bus_handle, aht30_sensor_handle_t * handle);
 {
     ESP_LOGI(TAG, "aht30_init()");
-    i2c_master_bus_handle_t bus_handle; // Ingen behov utover init, kan gjenfinnes med i2c_master_get_bus_handle()
-    i2c_master_bus_config_t bus_config = {
-        .i2c_port = I2C_MASTER_NUM,
-        .sda_io_num = I2C_MASTER_SDA_IO,
-        .scl_io_num = I2C_MASTER_SCL_IO,
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .glitch_ignore_cnt = 7,
-    // Sensor-breakout har egen 10k pullup        .flags.enable_internal_pullup = true,
-    };
-    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &bus_handle));
 
+    
     i2c_device_config_t dev_config = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = AHT30_SENSOR_ADDR,

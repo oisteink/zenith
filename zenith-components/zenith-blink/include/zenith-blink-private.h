@@ -5,7 +5,9 @@
 
 #define LED_STRIP_RMT_RES_HZ (10 * 1000 * 1000) // 10 MHz
 
+#ifdef ZBDEBUG
 static char * TAG = "zenith_blink";
+#endif
 
 static led_indicator_handle_t led_indicator = NULL;
 

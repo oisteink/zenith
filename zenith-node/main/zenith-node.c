@@ -9,10 +9,12 @@
 #include "esp_sleep.h"
 
 #include "zenith-now.h"
-#include "aht30.h"
 #include "zenith-blink.h"
 
 #include "zenith-node.h"
+
+#include "aht30.h"
+#include "zenith_sensor.h"
 
 /* zenith specific variables */
 static const char *TAG = "zenith-node";
@@ -46,11 +48,30 @@ void pair_with_core(void)
         vTaskDelay(pdMS_TO_TICKS(50));
 }
 
+i2c_master_bus_handle_t i2c_init()
+{
+    i2c_master_bus_handle_t bus_handle; // Ingen behov utover init, kan gjenfinnes med i2c_master_get_bus_handle()
+    i2c_master_bus_config_t bus_config = {
+        .i2c_port = I2C_MASTER_NUM,
+        .sda_io_num = I2C_MASTER_SDA_IO,
+        .scl_io_num = I2C_MASTER_SCL_IO,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+    // Sensor-breakout har egen 10k pullup        .flags.enable_internal_pullup = true,
+    };
+    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &bus_handle));
+    return bus_handle;
+}
+
+void init_sensor()
+{
+}
+
 /// @brief Reads the sensor and sends the data to the node_peer
 /// @return Allways returns ESP_OK
 void send_data(void) {
     // Set up the sensor
-    ESP_ERROR_CHECK(aht30_init()); // Initialize sensor
+    init_sensor();
     zenith_now_packet_t data_packet = { .type = ZENITH_PACKET_DATA }; // Initialize data packet
     ESP_ERROR_CHECK(aht30_read_sensor(&data_packet.sensor_data.temperature, &data_packet.sensor_data.humidity)); // Read sensor data into data packet
     ESP_ERROR_CHECK(zenith_now_add_peer(node_peer));
@@ -98,3 +119,15 @@ void app_main(void)
     send_data(); // Send the data
     esp_deep_sleep(30*1000*1000); //Sleep for 30 seconds
 }
+
+/*
+    i2c_master_bus_config_t bus_config = {
+        .i2c_port = I2C_MASTER_NUM,
+        .sda_io_num = I2C_MASTER_SDA_IO,
+        .scl_io_num = I2C_MASTER_SCL_IO,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+    // Sensor-breakout har egen 10k pullup        .flags.enable_internal_pullup = true,
+    };
+    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &bus_handle));
+*/

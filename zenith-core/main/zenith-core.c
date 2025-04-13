@@ -59,13 +59,16 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
     }
 }
 
- void app_main(void)
+ void app_main( void )
 {
-    ESP_LOGI(TAG, "app_main()");
+    ESP_LOGI( TAG, "app_main()" );
     // Initialize default NVS partition
-    ESP_ERROR_CHECK(initialize_nvs());
-    ESP_ERROR_CHECK(zenith_registry_create(&node_registry));
-    ESP_ERROR_CHECK(zenith_registry_init(node_registry));
+    ESP_ERROR_CHECK( initialize_nvs() );
+    ESP_ERROR_CHECK( zenith_registry_create( &node_registry ) );
+    ESP_ERROR_CHECK( zenith_registry_init( node_registry ) );
+    uint8_t count;
+    zenith_registry_count (node_registry, &count );
+    ESP_LOGI(TAG, "Registry has %d values", count);
     // Initialize display and load UI
     zenith_ui_config_t ui_config = {
         .spi_host = SPI2_HOST,
@@ -80,18 +83,21 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
 
         .touch_cs_pin = GPIO_NUM_22,
         .touch_irq_pin = GPIO_NUM_NC,
+
+        .node_registry = node_registry,
     };
     zenith_ui_handle_t core_ui_handle = NULL;
-    ESP_ERROR_CHECK(zenith_ui_new_core(&ui_config, &core_ui_handle));
+    ESP_ERROR_CHECK( zenith_ui_new_core( &ui_config, &core_ui_handle ) );
+    ESP_ERROR_CHECK( zenith_ui_test( core_ui_handle ) );
     zenith_ui_core_fade_lcd_brightness(75, 1500);
 
     // Initialize blinker
-    ESP_ERROR_CHECK(init_zenith_blink(WS2812_GPIO));
+    ESP_ERROR_CHECK( init_zenith_blink( WS2812_GPIO ) );
 
     // Initialize Zenith with default configuration
-    ESP_ERROR_CHECK(configure_zenith_now());
+    ESP_ERROR_CHECK( configure_zenith_now() );
 
-    zenith_now_set_rx_cb(core_rx_callback);
+    zenith_now_set_rx_cb( core_rx_callback );
 
     // Staying alive!
     vTaskDelay(portMAX_DELAY);

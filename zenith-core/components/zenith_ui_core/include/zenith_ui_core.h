@@ -39,8 +39,10 @@ struct zenith_ui_s {
     esp_lcd_panel_io_handle_t touch_io_handle;
     esp_lcd_touch_handle_t touch_panel_handle;
     lv_display_t *display;
+    zenith_registry_handle_t node_registry;
     zenith_ui_config_t config;
 };
 
 esp_err_t zenith_ui_del(zenith_ui_handle_t ui);
 esp_err_t zenith_ui_core_fade_lcd_brightness(const int brightness_percentage, const uint32_t max_fade_time);
+esp_err_t zenith_ui_test( zenith_ui_handle_t ui);

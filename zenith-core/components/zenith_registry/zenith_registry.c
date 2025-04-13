@@ -4,10 +4,18 @@
 #include "nvs_flash.h"
 #include "string.h"
 
-static char *TAG = "";
+static char *TAG = "zenith_registry";
 
-void _load_from_nvs( zenith_registry_handle_t handle ) 
+esp_err_t _load_from_nvs( zenith_registry_handle_t handle ) 
 {
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(
+        handle,
+        ESP_ERR_INVALID_ARG,
+        TAG, "Invalid handle"
+    );
+
     nvs_handle_t nvs_handle;
     uint8_t *blob = NULL;
     if ( nvs_open( ZENITH_REGISTRY_NAMESPACE, NVS_READWRITE, &nvs_handle ) == ESP_OK)  
@@ -33,14 +41,24 @@ void _load_from_nvs( zenith_registry_handle_t handle )
                 }
 
                 free( blob );
+                ESP_LOGI(TAG, "Loaded %d nodes from nvs", handle->count);
             }
         }
         nvs_close(nvs_handle);
     }
+    return ret;
 }
 
-void _store_to_nvs( zenith_registry_handle_t handle )
+esp_err_t _store_to_nvs( zenith_registry_handle_t handle )
 {
+    esp_err_t ret = ESP_OK;
+
+    ESP_RETURN_ON_FALSE(
+        handle,
+        ESP_ERR_INVALID_ARG,
+        TAG, "Invalid handle"
+    );
+
     nvs_handle_t nvs_handle;
     if ( nvs_open( ZENITH_REGISTRY_NAMESPACE, NVS_READWRITE, &nvs_handle ) == ESP_OK )
     {
@@ -49,13 +67,17 @@ void _store_to_nvs( zenith_registry_handle_t handle )
 
         nvs_close( nvs_handle );
     }
+
+    return ret;
 }
 
 int8_t zenith_registry_index_of_mac( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN] )
 {
+    assert( handle );
     for ( uint8_t i = 0; i < handle->count; i++ )
     {
-        if (memcmp(handle->nodes[i].mac, mac, ESP_NOW_ETH_ALEN) == 0) {
+        if ( memcmp( handle->nodes[i].mac, mac, ESP_NOW_ETH_ALEN ) == 0 ) 
+        {
             return i;
         }
     }
@@ -143,9 +165,15 @@ esp_err_t zenith_registry_get( zenith_registry_handle_t handle, const uint8_t in
 
 esp_err_t zenith_registry_count( zenith_registry_handle_t handle, uint8_t* count )
 {
+    esp_err_t ret = ESP_OK;
+    ESP_RETURN_ON_FALSE(
+        handle,
+        ESP_FAIL,
+        TAG, "Handle is fucked" 
+    );
     *count = handle->count;
 
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t zenith_registry_update( zenith_registry_handle_t handle, const uint8_t index, zenith_node_t node )

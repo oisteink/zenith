@@ -78,14 +78,7 @@ static _lock_t lvgl_api_lock;
 // consider callbacks
 // (esp_lcd_touch_handle_t tp, uint16_t *x, uint16_t *y, uint16_t *strength, uint8_t *point_num, uint8_t max_point_num)
 
-static void zenith_ui_core_touch_apply_calibration(
-        esp_lcd_touch_handle_t tp, 
-        uint16_t * x, 
-        uint16_t * y, 
-        uint16_t * strength,
-        uint8_t * point_num, 
-        uint8_t max_point_num
-    ) 
+static void zenith_ui_core_touch_apply_calibration( esp_lcd_touch_handle_t tp, uint16_t * x, uint16_t * y, uint16_t * strength, uint8_t * point_num, uint8_t max_point_num ) 
 {
     for ( int i = 0; i < *point_num; i++ ) {
         // Clamp to calibrated min/max
@@ -97,9 +90,7 @@ static void zenith_ui_core_touch_apply_calibration(
     }
 }
 
-esp_err_t zenith_ui_core_init_lcd_backlight(
-        int LCD_LED
-    )
+esp_err_t zenith_ui_core_init_lcd_backlight( int LCD_LED )
 {
     ESP_LOGI( TAG, "Initializing backlight LEDC: GPIO[%d]", LCD_LED );
     const ledc_channel_config_t LCD_backlight_channel =
@@ -140,10 +131,7 @@ esp_err_t zenith_ui_core_init_lcd_backlight(
     return ESP_OK;
 }
 
-esp_err_t zenith_ui_core_fade_lcd_brightness(
-            const int brightness_percentage, 
-            const uint32_t max_fade_time
-        )
+esp_err_t zenith_ui_core_fade_lcd_brightness( const int brightness_percentage, const uint32_t max_fade_time )
 {
     uint32_t target_duty = ( 1023 * brightness_percentage ) / 100;
     ESP_RETURN_ON_ERROR(
@@ -154,9 +142,7 @@ esp_err_t zenith_ui_core_fade_lcd_brightness(
     return ESP_OK;
 }
 
-esp_err_t zenith_ui_core_set_lcd_brightness(
-        int brightness_percentage
-    )
+esp_err_t zenith_ui_core_set_lcd_brightness( int brightness_percentage )
 {
     ESP_RETURN_ON_FALSE( ( brightness_percentage <= 100 && brightness_percentage >= 0 ), ESP_ERR_INVALID_ARG, TAG, "Invalid brightness: %d", brightness_percentage );
     if ( brightness_percentage > 100 )
@@ -179,22 +165,14 @@ esp_err_t zenith_ui_core_set_lcd_brightness(
     return ESP_OK;
 }
 
-static bool zenith_ui_core_notify_lvgl_flush_ready(
-        esp_lcd_panel_io_handle_t panel_io, 
-        esp_lcd_panel_io_event_data_t * edata, 
-        void * user_ctx
-    )
+static bool zenith_ui_core_notify_lvgl_flush_ready( esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t * edata, void * user_ctx )
 {
     lv_display_t *disp = ( lv_display_t * )user_ctx;
     lv_display_flush_ready( disp );
     return false;
 }
 
-static void zenith_ui_core_lvgl_flush_cb(
-        lv_display_t * disp, 
-        const lv_area_t *area, 
-        uint8_t * px_map
-    )
+static void zenith_ui_core_lvgl_flush_cb( lv_display_t * disp, const lv_area_t *area, uint8_t * px_map )
 {
     //zenith_ui_core_apply_lvgl_rotation(disp);
     esp_lcd_panel_handle_t panel_handle = lv_display_get_user_data( disp );
@@ -207,10 +185,7 @@ static void zenith_ui_core_lvgl_flush_cb(
     );
 }
 
-static void zenith_ui_core_lvgl_touch_cb(
-        lv_indev_t * indev, 
-        lv_indev_data_t * data
-    )
+static void zenith_ui_core_lvgl_touch_cb( lv_indev_t * indev, lv_indev_data_t * data )
 {
     uint16_t touchpad_x[1] = {0};
     uint16_t touchpad_y[1] = {0};
@@ -230,9 +205,7 @@ static void zenith_ui_core_lvgl_touch_cb(
     }
 }
 
-static void zenith_ui_core_increase_lvgl_tick(
-        void * arg
-    )
+static void zenith_ui_core_increase_lvgl_tick( void * arg )
 {
     /* Tell LVGL how many milliseconds has elapsed */
     lv_tick_inc( LVGL_TICK_PERIOD_MS );
@@ -255,12 +228,8 @@ static void lvgl_task(
     }
 }
 
-esp_err_t zenith_ui_core_init_spi( //SPI is device, so it should probably be initialized outside
-        spi_host_device_t spi_host, 
-        const int spi_sclk, 
-        const int spi_mosi, 
-        const int spi_miso 
-    )
+//SPI is device, so it should probably be initialized outside
+esp_err_t zenith_ui_core_init_spi( spi_host_device_t spi_host, const int spi_sclk, const int spi_mosi, const int spi_miso )
 {
     ESP_LOGI( TAG, "Initializing SPI%d_HOST: SCLK GPIO[%d] MOSI GPIO[%d] MISO GPIO[%d]", spi_host + 1, spi_sclk, spi_mosi, spi_miso );
     spi_bus_config_t buscfg = {
@@ -279,14 +248,7 @@ esp_err_t zenith_ui_core_init_spi( //SPI is device, so it should probably be ini
     return ESP_OK;
 }
 
-esp_err_t zenith_ui_core_init_lcd_panel(
-        spi_host_device_t spi_host, 
-        const int lcd_cs, 
-        const int lcd_dc, 
-        const int lcd_reset, 
-        esp_lcd_panel_io_handle_t *io_handle, 
-        esp_lcd_panel_handle_t *panel_handle
-    )
+esp_err_t zenith_ui_core_init_lcd_panel( spi_host_device_t spi_host, const int lcd_cs, const int lcd_dc, const int lcd_reset, esp_lcd_panel_io_handle_t *io_handle, esp_lcd_panel_handle_t *panel_handle )
 {
     ESP_LOGI( TAG, "Installing lcd panel IO to SPI%d_HOST: CS GPIO[%d], DC GPIO[%d]", spi_host + 1, lcd_cs, lcd_dc );
     esp_lcd_panel_io_spi_config_t io_config = {
@@ -339,12 +301,7 @@ esp_err_t zenith_ui_core_init_lcd_panel(
     return ESP_OK;
 }
 
-esp_err_t zenith_ui_core_init_touch_panel(
-        spi_host_device_t spi_host, 
-        const int touch_cs,
-        esp_lcd_panel_io_handle_t * touch_io_handle,
-        esp_lcd_touch_handle_t * touch_panel_handle
-    )
+esp_err_t zenith_ui_core_init_touch_panel( spi_host_device_t spi_host, const int touch_cs, esp_lcd_panel_io_handle_t * touch_io_handle, esp_lcd_touch_handle_t * touch_panel_handle )
 {
     ESP_LOGI( TAG, "Installing touch panel IO to SPI%d_HOST: CS GPIO[%d]", spi_host + 1, touch_cs );
     esp_lcd_panel_io_spi_config_t touch_io_config = ESP_LCD_TOUCH_IO_SPI_XPT2046_CONFIG( touch_cs );
@@ -376,13 +333,7 @@ esp_err_t zenith_ui_core_init_touch_panel(
     return ESP_OK;
 }
 
-esp_err_t zenith_ui_core_init_lvgl(
-        spi_host_device_t spi_host, 
-        const esp_lcd_panel_io_handle_t lcd_io_handle, 
-        const esp_lcd_panel_handle_t lcd_panel_handle, 
-        const esp_lcd_touch_handle_t touch_panel_handle, 
-        lv_display_t * *lvgl_display
-    )
+esp_err_t zenith_ui_core_init_lvgl( spi_host_device_t spi_host, const esp_lcd_panel_io_handle_t lcd_io_handle, const esp_lcd_panel_handle_t lcd_panel_handle, const esp_lcd_touch_handle_t touch_panel_handle, lv_display_t * *lvgl_display )
 {
     ESP_LOGI( TAG, "Initializing LVGL");
     lv_init();
@@ -463,11 +414,9 @@ esp_err_t zenith_ui_core_init_lvgl(
     return ESP_OK;
 }
 
-esp_err_t zenith_ui_del(
-        zenith_ui_handle_t ui
-    )
+esp_err_t zenith_ui_del( zenith_ui_handle_t ui )
 {
-    // vi trenger tilsvarende som for å lage - deinit_spi, deinit_lcd_backlight etc.
+    // vi(vi? du og koden din?) trenger tilsvarende som for å lage - deinit_spi, deinit_lcd_backlight etc.
     /**********
     * LVGL - check docks for deinit
     * */
@@ -504,7 +453,7 @@ esp_err_t zenith_ui_del(
 esp_err_t zenith_ui_new_core( const zenith_ui_config_t* config, zenith_ui_handle_t *ui )
 {
     zenith_ui_handle_t handle = ( zenith_ui_handle_t ) calloc( 1, sizeof( zenith_ui_t ) );
-    memcpy(&handle->config, config, sizeof(zenith_ui_config_t));
+    memcpy( &handle->config, config, sizeof(zenith_ui_config_t ) );
     ESP_RETURN_ON_ERROR(
         zenith_ui_core_init_spi( config->spi_host, config->sclk_pin, config->mosi_pin, config->miso_pin ),
         TAG, "Error initializing spi"
@@ -526,7 +475,39 @@ esp_err_t zenith_ui_new_core( const zenith_ui_config_t* config, zenith_ui_handle
         TAG, "Error initializing LVGL"
     );
 
+    handle->node_registry = config->node_registry;
+
     *ui = handle;
 
+    return ESP_OK;
+}
+
+#ifndef MAC2STR
+#define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
+#define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
+#endif
+
+esp_err_t zenith_ui_test( zenith_ui_handle_t ui)
+{
+    lv_obj_t *scr = lv_scr_act();
+    
+    // Create list
+    lv_obj_t *list = lv_list_create( scr );
+    lv_obj_set_size( list, LV_PCT( 100 ), LV_PCT( 100 ) );
+    
+    // Get registry data
+    uint8_t count;
+    zenith_registry_count( ui->node_registry, &count );
+    
+    // Populate list
+    for(uint8_t i=0; i<count; i++) {
+        uint8_t mac[6];
+        zenith_registry_get_mac(ui->node_registry, i, mac);
+        
+        char mac_str[18];
+        sprintf( mac_str, MACSTR, MAC2STR( mac ) );
+        
+        lv_list_add_btn( list, NULL, mac_str );
+    }
     return ESP_OK;
 }
