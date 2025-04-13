@@ -99,16 +99,16 @@ esp_err_t zenith_registry_deinit( zenith_registry_handle_t handle )
 
 esp_err_t zenith_registry_add( zenith_registry_handle_t handle, const zenith_node_t node )
 {
+    // Ignore if node is allready registred
+    if ( zenith_registry_index_of_mac( handle, node.mac ) >= 0 )
+        return ESP_OK;
+
     ESP_RETURN_ON_FALSE(
         handle->count < ZENITH_REGISTRY_MAX_NODES,
         ESP_ERR_NO_MEM,
         TAG, "No room for more nodes"
     );
     
-    // Ignore if node is allready registred
-    if ( zenith_registry_index_of_mac( handle, node.mac ) >= 0 )
-        return ESP_OK;
-
     memcpy( &handle->nodes[handle->count], &node, sizeof( zenith_node_t ) );
     handle->count++;
 
@@ -146,6 +146,12 @@ esp_err_t zenith_registry_count( zenith_registry_handle_t handle, uint8_t* count
     *count = handle->count;
 
     return ESP_OK;
+}
+
+esp_err_t zenith_registry_update( zenith_registry_handle_t handle, const uint8_t index, zenith_node_t node )
+{
+    ESP_LOGE(TAG, "zenith_registry_update is not implemented");
+    return ESP_FAIL;
 }
 
 esp_err_t zenith_registry_get_mac( zenith_registry_handle_t handle, uint8_t index, uint8_t mac[ESP_NOW_ETH_ALEN] )

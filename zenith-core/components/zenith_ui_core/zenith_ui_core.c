@@ -501,10 +501,7 @@ esp_err_t zenith_ui_del(
     return ESP_OK;
 }
 
-esp_err_t zenith_ui_new_core(
-        const zenith_ui_config_t* config, 
-        zenith_ui_handle_t *ui
-    )
+esp_err_t zenith_ui_new_core( const zenith_ui_config_t* config, zenith_ui_handle_t *ui )
 {
     zenith_ui_handle_t handle = ( zenith_ui_handle_t ) calloc( 1, sizeof( zenith_ui_t ) );
     memcpy(&handle->config, config, sizeof(zenith_ui_config_t));
@@ -533,43 +530,3 @@ esp_err_t zenith_ui_new_core(
 
     return ESP_OK;
 }
-
-/* void app_main(void)
-{
-    zenith_ui_config_t ui_config = {
-        .spi_host = SPI2_HOST,
-        .sclk_pin = GPIO_NUM_19,
-        .mosi_pin = GPIO_NUM_20,
-        .miso_pin = GPIO_NUM_18,
-
-        .lcd_backlight_pin = GPIO_NUM_3,
-        .lcd_cs_pin = GPIO_NUM_0,
-        .lcd_dc_pin = GPIO_NUM_2,
-        .lcd_reset_pin = GPIO_NUM_1,
-
-        .touch_cs_pin = GPIO_NUM_5,
-        .touch_irq_pin = GPIO_NUM_NC
-    };
-    zenith_ui_handle_t ui = NULL;
-    ESP_ERROR_CHECK(
-        zenith_ui_new_core(&ui_config, &ui)
-    );
-
-    // Create UI.
-    // - Some form of zenith_ui_lock_lvgl(ui_handle)? 
-    // - Or maybe a callback for creating UI? zenith_ui_set_create_ui_cb(ui_handle, app_create_ui_cb)
-    // - Probably the zenith_ui_core should encapsulate this and run it during zenith_ui_initialize(ui_handle); The zenith_ui_new_core should jsut initialize the handle
-    // Lock the mutex due to the LVGL APIs are not thread-safe
-    _lock_acquire( &lvgl_api_lock) ; 
-    //app_lvgl_ui(display);
-    lv_example_obj_2();
-    _lock_release( &lvgl_api_lock );
-
-    ESP_LOGI( TAG, "Showtime! Lets' turn on LCD backlight" );
-    ESP_ERROR_CHECK(
-        zenith_ui_core_fade_lcd_brightness( 75, 1500 ) // skal bli zenith_ui_fade_brightness(ui_handle, 70, 1500)
-    );
-    // reached end of app_main, so just keep watchdog happy now
-    vTaskDelay( portMAX_DELAY );
-}
- */

@@ -6,6 +6,7 @@
 #include "freertos/event_groups.h"
 #include "esp_mac.h"
 #include "nvs_flash.h"
+#include "esp_check.h"
 
 #include "zenith-now.h"
 #include "zenith-private.h"
@@ -147,17 +148,25 @@ esp_err_t zenith_now_send_ack(const uint8_t *peer_addr, zenith_now_packet_type_t
 
 esp_err_t zenith_now_send_packet(const uint8_t *peer_addr, const zenith_now_packet_t data_packet)
 {
+    esp_err_t ret = ESP_OK;
     #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_Send_packet()");
     #endif
+    // Assure that we can send to this address
+    if ( !esp_now_is_peer_exist( peer_addr ) )
+        ESP_RETURN_ON_ERROR(
+            zenith_now_add_peer(peer_addr),
+            TAG, "Error adding peer on send"
+    );
     uint8_t data_size = 0;
     uint8_t *data = NULL;
-    esp_err_t err = zenith_now_serialize_data(&data_packet, &data, &data_size);
-    if (err == ESP_OK) {
-        err = esp_now_send(peer_addr, data, data_size);
-        free(data);
-    }
-    return err;
+    ret = zenith_now_serialize_data(&data_packet, &data, &data_size);
+    if ( ret == ESP_OK )
+        ret =  zenith_now_serialize_data(&data_packet, &data, &data_size);
+    if (ret == ESP_OK) 
+        ret = esp_now_send(peer_addr, data, data_size);
+    free(data);
+    return ret;
 }
 
 static void zenith_now_espnow_send_cb(const uint8_t *mac_addr, esp_now_send_status_t status)

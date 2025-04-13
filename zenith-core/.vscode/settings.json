@@ -17,7 +17,8 @@
     "esp_now.h": "c",
     "string.h": "c",
     "strings.h": "c",
-    "zenith_node_registry.h": "c"
+    "zenith_node_registry.h": "c",
+    "zenith_registry.h": "c"
   },
   "idf.espIdfPathWin": "D:/Espressif/frameworks/esp-idf/",
   "idf.toolsPathWin": "D:\\Espressif",

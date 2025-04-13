@@ -3,6 +3,7 @@
 #include "esp_lcd_types.h"
 #include "esp_lcd_touch.h"
 #include "lvgl.h"
+#include "zenith_registry.h"
 
 
 typedef struct zenith_ui_config {
@@ -20,7 +21,10 @@ typedef struct zenith_ui_config {
     
     // Touch-specific
     int touch_cs_pin;
-    int touch_irq_pin;   
+    int touch_irq_pin;
+    
+    // Handle for data
+    zenith_registry_handle_t node_registry;
 } zenith_ui_config_t;
 
 typedef struct zenith_ui_s zenith_ui_t;
