@@ -21,55 +21,77 @@
 
 /* zenith specific variables */
 static const char *TAG = "zenith-node";
-RTC_DATA_ATTR static uint8_t paired_core[ESP_NOW_ETH_ALEN] = { 0 }; // peers mac address
+RTC_DATA_ATTR static uint8_t paired_core[ ESP_NOW_ETH_ALEN ] = { 0 }; // peers mac address
 RTC_DATA_ATTR uint8_t failed_sends = 0;
 
 
-bool saved_peer(void) {
-    uint8_t empty_mac[ESP_NOW_ETH_ALEN] = {0};
-    return (memcmp(paired_core, empty_mac, ESP_NOW_ETH_ALEN) != 0);
+bool saved_peer( void ){
+    uint8_t empty_mac[ ESP_NOW_ETH_ALEN ] = { 0 };
+    return ( memcmp( paired_core, empty_mac, ESP_NOW_ETH_ALEN ) != 0 );
 }
 
 /// @brief  Enter pairingmode
 /// @return Allways returns ESP_OK
-void pair_with_core(void)
-{
-    uint8_t broadcast[ESP_NOW_ETH_ALEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-    ESP_ERROR_CHECK(zenith_now_add_peer(broadcast)); // Add broadcast peer
-    zenith_now_packet_t data_packet = { .type = ZENITH_PACKET_PAIRING}; // Create pairing packet
-    uint8_t peering_tries = 0; // initialize counter for pairing retries
-    do
-    {
+void pair_with_core( void ){
+    // Add broadcast peer
+    uint8_t broadcast[ ESP_NOW_ETH_ALEN ] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+    ESP_ERROR_CHECK(
+        zenith_now_add_peer( broadcast ) 
+    ); 
+
+    // Create pairing packet
+    zenith_now_packet_t data_packet = { 
+        .type = ZENITH_PACKET_PAIRING
+    }; 
+
+    // initialize counter for pairing retries
+    uint8_t peering_tries = 0; 
+    do {
+        // If we miss 5 pairing requests, enter deeps sleep
         if (peering_tries++ >= 5)
-            esp_deep_sleep(NODE_SLEEP_NO_PEER); // If we miss 5 pairing requests, enter deeps sleep
-        ESP_ERROR_CHECK(zenith_blink(BLINK_PAIRING)); // Blink to show we are trying to pair
-        ESP_ERROR_CHECK(zenith_now_send_packet(broadcast, data_packet)); // Send the pairing request
-    } 
-    while (zenith_now_wait_for_ack(ZENITH_PACKET_PAIRING, 5000) != ESP_OK); // Wait 5 seconds for ack, and retry if we timed out
-    ESP_ERROR_CHECK(zenith_now_remove_peer(broadcast)); // Remove broadcast peer
-    while (!saved_peer())  // Wait for paired_core to be stored. 
-        vTaskDelay(pdMS_TO_TICKS(50));
+            esp_deep_sleep(NODE_SLEEP_NO_PEER); 
+        
+        // Blink to show we are trying to pair
+        ESP_ERROR_CHECK(
+            zenith_blink( BLINK_PAIRING )
+        ); 
+
+        // Send the pairing request
+        ESP_ERROR_CHECK(
+            zenith_now_send_packet( broadcast, data_packet )
+        ); 
+    } while ( zenith_now_wait_for_ack( ZENITH_PACKET_PAIRING, 5000 ) != ESP_OK ); // Wait 5 seconds for ack, and retry if we timed out
+
+    // Remove broadcast peer
+    ESP_ERROR_CHECK(
+        zenith_now_remove_peer( broadcast )
+    ); 
+
+    // Wait for paired_core to be stored. 
+    while ( ! saved_peer() )  
+        vTaskDelay( pdMS_TO_TICKS( 50 ) );
 }
 
-i2c_master_bus_handle_t i2c_init()
-{
-    i2c_master_bus_handle_t bus_handle; // Ingen behov utover init, kan gjenfinnes med i2c_master_get_bus_handle()
+i2c_master_bus_handle_t i2c_init(){
+    // Ingen behov utover init, kan gjenfinnes med i2c_master_get_bus_handle()
+    i2c_master_bus_handle_t bus_handle; 
     i2c_master_bus_config_t bus_config = {
         .i2c_port = I2C_MASTER_NUM,
         .sda_io_num = I2C_MASTER_SDA_IO,
         .scl_io_num = I2C_MASTER_SCL_IO,
         .clk_source = I2C_CLK_SRC_DEFAULT,
         .glitch_ignore_cnt = 7,
-    // Sensor-breakout har egen 10k pullup        .flags.enable_internal_pullup = true,
     };
-    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &bus_handle));
+    ESP_ERROR_CHECK(
+        i2c_new_master_bus( &bus_config, &bus_handle )
+    );
+    
     return bus_handle;
 }
 
 #define BMP280_SENSOR
 
-esp_err_t init_sensor( zenith_sensor_handle_t *sensor )
-{
+esp_err_t init_sensor( zenith_sensor_handle_t *sensor ){
     i2c_master_bus_config_t bus_config = {
         .i2c_port = I2C_MASTER_NUM,
         .sda_io_num = I2C_MASTER_SDA_IO,
@@ -99,7 +121,7 @@ esp_err_t init_sensor( zenith_sensor_handle_t *sensor )
 
 /// @brief Reads the sensor and sends the data to the paired_core
 /// @return Allways returns ESP_OK
-void send_data( zenith_sensor_handle_t sensor ) {
+void send_data( zenith_sensor_handle_t sensor ){
     
     // Initialize data packet
     zenith_now_packet_t data_packet = {
@@ -135,8 +157,7 @@ void send_data( zenith_sensor_handle_t sensor ) {
 /// @brief 
 /// @param mac MAC address of the sender
 /// @param packet The packet received
-void node_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet)
-{
+void node_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet){
     switch ( packet->type ) {
 
         case ZENITH_PACKET_ACK:
@@ -153,8 +174,7 @@ void node_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet)
     }
 }
 
-void app_main( void )
-{
+void app_main( void ){
     // Debug code to enable easy reflashing
     if ( esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_TIMER )
     {
@@ -189,6 +209,3 @@ void app_main( void )
     // Enter deep sleep
     esp_deep_sleep( 30 * 1000 * 1000 );  // DEBUG! 30 seconds
 }
-
-/*
-*/

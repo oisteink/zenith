@@ -29,9 +29,70 @@
 
 #define DEFAULT_ZENITH_SENSOR_BMP280_CONFIG { .device_address = 0x76, .scl_speed_hz = 100 * 1000 }
 
+// 3.3.1 Temperature: Table 21
+// 3.3.2 Pressure : Table 22
+typedef enum bmp280_oversampling_e {
+    BMP280_OVERSAMPLING_NONE = 0b000,
+    BMP280_OVERSAMPLING_X1   = 0b001,
+    BMP280_OVERSAMPLING_X2   = 0b010,
+    BMP280_OVERSAMPLING_X4   = 0b011,
+    BMP280_OVERSAMPLING_X8   = 0b100,
+    BMP280_OVERSAMPLING_X16  = 0b101
+} bmp280_oversampling_t;
+
+// 3.6 Power Modes: Table 10
+typedef enum bmp280_power_mode_e {
+    BMP280_MODE_SLEEP  = 0b00,
+    BMP280_MODE_FORCED = 0b01,
+    BMP280_MODE_NORMAL = 0b11
+} bmp280_power_mode_t;
+
+// 3.6.3 Inactive duration in normal mode: Table 11
+typedef enum bmp280_standby_e {
+    BMP280_STANDBY_MS_0_5  = 0b000,
+    BMP280_STANDBY_MS_10   = 0b110,
+    BMP280_STANDBY_MS_20   = 0b111,
+    BMP280_STANDBY_MS_62_5 = 0b001,
+    BMP280_STANDBY_MS_125  = 0b010,
+    BMP280_STANDBY_MS_250  = 0b011,
+    BMP280_STANDBY_MS_500  = 0b100,
+    BMP280_STANDBY_MS_1000 = 0b101
+} bmp280_standby_t;
+
+// 3.3.3 IIR filter: Table 6
+typedef enum bmp280_iir_filters_e {
+    BMP280_FILTER_OFF = 0b000,
+    BMP280_FILTER_X2  = 0b001,
+    BMP280_FILTER_X4  = 0b010,
+    BMP280_FILTER_X8  = 0b011,
+    BMP280_FILTER_X16 = 0b100
+} bmp280_IIR_filter_t;
+
+typedef struct bmp280_config_s {
+    unsigned int t_sb : 3;
+    unsigned int filter : 3;
+    unsigned int unused : 1;
+    unsigned int spi3w_en : 1;
+} bmp280_config_t;
+
+typedef struct ctrl_meas_s {
+    unsigned int osrs_t : 3;
+    unsigned int osrs_p : 3;
+    unsigned int mode : 2;
+} bmp280_ctrl_meas_t;
+
+typedef struct status_s {
+    unsigned int unused : 4;
+    unsigned int measuring : 3;
+    unsigned int unused2 : 1;
+    unsigned int im_update : 1;
+} status_t;
+
 typedef struct zenith_sensor_bmp280_config_s {
     uint16_t device_address; // 
     uint32_t scl_speed_hz;   // 100kHz is max i2c standard mode
+    bmp280_config_t config;
+    bmp280_ctrl_meas_t control_measure;
 } zenith_sensor_bmp280_config_t;
 
 
