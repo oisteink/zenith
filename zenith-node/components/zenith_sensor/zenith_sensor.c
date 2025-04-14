@@ -4,10 +4,10 @@
 
 static const char *TAG = "zenith_sensor";
 
-esp_err_t zenith_sensor_read_temperature(zenith_sensor_handle_t sensor, int16_t *out_temp) {
+esp_err_t zenith_sensor_read_temperature(zenith_sensor_handle_t sensor, float *out_temp) {
     esp_err_t ret;
     ESP_RETURN_ON_FALSE(
-        sensor || out_temp || !sensor->read_temperature,
+        sensor && out_temp && sensor->read_temperature,
         ESP_ERR_INVALID_ARG,
         TAG, "Invalid arguments passed to read_temperature"
     );
@@ -15,10 +15,10 @@ esp_err_t zenith_sensor_read_temperature(zenith_sensor_handle_t sensor, int16_t 
     return ret;
 }
 
-esp_err_t zenith_sensor_read_humidity(zenith_sensor_handle_t sensor, int16_t *out_humidity) {
+esp_err_t zenith_sensor_read_humidity(zenith_sensor_handle_t sensor, float *out_humidity) {
     esp_err_t ret;
     ESP_RETURN_ON_FALSE(
-        sensor || out_humidity || !sensor->read_humidity,
+        sensor && out_humidity && sensor->read_humidity,
         ESP_ERR_INVALID_ARG,
         TAG, "Invalid arguments passed to read humidity"
     );
@@ -26,10 +26,10 @@ esp_err_t zenith_sensor_read_humidity(zenith_sensor_handle_t sensor, int16_t *ou
     return ret;
 }
 
-esp_err_t zenith_sensor_read_pressure(zenith_sensor_handle_t sensor, int16_t *out_pressure) {
+esp_err_t zenith_sensor_read_pressure(zenith_sensor_handle_t sensor, float *out_pressure) {
     esp_err_t ret;
     ESP_RETURN_ON_FALSE(
-        sensor || out_pressure || sensor->read_pressure,
+        sensor && out_pressure && sensor->read_pressure,
         ESP_ERR_INVALID_ARG,
         TAG, "Invalid arguments passed to pressure"
     );

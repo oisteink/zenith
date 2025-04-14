@@ -10,13 +10,14 @@
 
 typedef struct zenith_sensor_aht30_config_s {
     uint16_t device_address; // Not really needed as the address is static. 
-    uint32_t scl_speed_hz;   // 1kHz fits good
+    uint32_t scl_speed_hz;   // 100kHz is max i2c standard mode
 } zenith_sensor_aht30_config_t;
 
 
-typedef struct aht30_sensor_s aht30_sensor_t;
+typedef struct zenith_sensor_aht30_s zenith_sensor_aht30_t;
+typedef zenith_sensor_aht30_t *zenith_sensor_aht30_handle_t;
 
-struct aht30_sensor_s {
+struct zenith_sensor_aht30_s {
     zenith_sensor_t base;
     i2c_master_bus_handle_t bus_handle;
     i2c_master_dev_handle_t dev_handle;

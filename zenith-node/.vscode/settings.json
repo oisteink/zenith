@@ -19,8 +19,10 @@
     "esp_check.h": "c",
     "esp_err.h": "c",
     "i2c.h": "c",
-    "spi_common.h": "c"
+    "spi_common.h": "c",
+    "zenith_sensor.h": "c",
+    "zenith_sensor_aht30.h": "c"
   },
-  "idf.portWin": "COM10",
+  "idf.portWin": "COM5",
   "idf.flashType": "UART"
 }
