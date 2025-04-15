@@ -4,12 +4,25 @@
 
 static const char *TAG = "zenith_sensor";
 
+esp_err_t zentih_sensor_init( zenith_sensor_handle_t sensor ) {
+    esp_err_t ret = ESP_OK;
+    ESP_RETURN_ON_FALSE(
+        sensor,
+        ESP_ERR_INVALID_ARG,
+        TAG, "NULL pointer passed to init"
+    );
+    if ( sensor->initialize )
+        ret = sensor->initialize( sensor );
+    return ret;
+}
+
+
 esp_err_t zenith_sensor_read_temperature( zenith_sensor_handle_t sensor, float *out_temp ) {
     esp_err_t ret = ESP_OK;
     ESP_RETURN_ON_FALSE(
         sensor && out_temp,
         ESP_ERR_INVALID_ARG,
-        TAG, "Invalid arguments passed to read_temperature"
+        TAG, "NULL pointer passed to read_temperature"
     );
     if ( sensor->read_temperature )
         ret = sensor->read_temperature( sensor, out_temp );
@@ -21,7 +34,7 @@ esp_err_t zenith_sensor_read_humidity( zenith_sensor_handle_t sensor, float *out
     ESP_RETURN_ON_FALSE(
         sensor && out_humidity,
         ESP_ERR_INVALID_ARG,
-        TAG, "Invalid arguments passed to read humidity"
+        TAG, "NULL pointer passed to read humidity"
     );
 
     if ( sensor->read_humidity )
@@ -34,7 +47,7 @@ esp_err_t zenith_sensor_read_pressure( zenith_sensor_handle_t sensor, float *out
     ESP_RETURN_ON_FALSE(
         sensor && out_pressure,
         ESP_ERR_INVALID_ARG,
-        TAG, "Invalid arguments passed to pressure"
+        TAG, "NULL pointer passed to pressure"
     );
     if ( sensor->read_pressure )
         ret = sensor->read_pressure( sensor, out_pressure );

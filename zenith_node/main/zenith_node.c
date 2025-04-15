@@ -72,49 +72,43 @@ void pair_with_core( void ){
         vTaskDelay( pdMS_TO_TICKS( 50 ) );
 }
 
-i2c_master_bus_handle_t i2c_init(){
-    // Ingen behov utover init, kan gjenfinnes med i2c_master_get_bus_handle()
-    i2c_master_bus_handle_t bus_handle; 
+ esp_err_t i2c_init(i2c_master_bus_handle_t *i2c_bus){
     i2c_master_bus_config_t bus_config = {
         .i2c_port = I2C_MASTER_NUM,
         .sda_io_num = I2C_MASTER_SDA_IO,
         .scl_io_num = I2C_MASTER_SCL_IO,
         .clk_source = I2C_CLK_SRC_DEFAULT,
         .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
     };
     ESP_ERROR_CHECK(
-        i2c_new_master_bus( &bus_config, &bus_handle )
+        i2c_new_master_bus( &bus_config, i2c_bus )
     );
-    
-    return bus_handle;
+
+    return ESP_OK;
 }
 
 #define BMP280_SENSOR
 
-esp_err_t init_sensor( zenith_sensor_handle_t *sensor ){
-    i2c_master_bus_config_t bus_config = {
-        .i2c_port = I2C_MASTER_NUM,
-        .sda_io_num = I2C_MASTER_SDA_IO,
-        .scl_io_num = I2C_MASTER_SCL_IO,
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .glitch_ignore_cnt = 7,
-    };
-    i2c_master_bus_handle_t bus_handle = NULL;
-    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &bus_handle));
-
+esp_err_t init_sensor( zenith_sensor_handle_t *sensor, i2c_master_bus_handle_t i2c_bus ){
 #ifdef BMP280_SENSOR
     zenith_sensor_bmp280_config_t bmp280_config = DEFAULT_ZENITH_SENSOR_BMP280_CONFIG;
     ESP_RETURN_ON_ERROR(
-        zenith_sensor_new_bmp280( bus_handle, &bmp280_config, sensor),
+        zenith_sensor_new_bmp280( i2c_bus, &bmp280_config, sensor),
         TAG, "Error creating sensor"
     );   
+    ESP_LOGI(TAG, "Created bmp280 sensor");
 #else
     zenith_sensor_aht30_config_t aht30_config = DEFAULT_ZENITH_SENSOR_AHT30_CONFIG;
     ESP_RETURN_ON_ERROR(
-        zenith_sensor_new_aht30( bus_handle, &aht30_config, sensor);
+        zenith_sensor_new_aht30( i2c_bus, &aht30_config, sensor);
         TAG, "Error creating sensor"
     );
 #endif
+     ESP_RETURN_ON_ERROR(
+        zentih_sensor_init( *sensor ),
+        TAG, "Error initializing sensor"
+    );
 
     return ESP_OK;
 }
@@ -182,10 +176,12 @@ void app_main( void ){
         vTaskDelay( pdMS_TO_TICKS( 30000 ) );
     }
 
+    i2c_master_bus_handle_t i2c_bus = NULL;
+    i2c_init( &i2c_bus );
     // Initialize sensor
     zenith_sensor_handle_t sensor = NULL;
     ESP_ERROR_CHECK( 
-        init_sensor( &sensor ) 
+        init_sensor( &sensor, i2c_bus ) 
     );
 
     // Initialize blink LED
