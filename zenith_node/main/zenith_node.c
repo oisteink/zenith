@@ -122,16 +122,16 @@ void send_data( zenith_sensor_handle_t sensor ){
         .type = ZENITH_PACKET_DATA 
     }; 
 
-    // Read sensor values
-    ESP_ERROR_CHECK(
-        zenith_sensor_read_temperature( sensor, &data_packet.sensor_data.temperature ) 
+    zenith_datapoints_t sensor_data = { 0 };
+    ESP_ERROR_CHECK( 
+        zenith_sensor_read_data( sensor, &sensor_data )
     );
-    ESP_ERROR_CHECK(
-        zenith_sensor_read_humidity( sensor, &data_packet.sensor_data.humidity ) 
-    );
+    zenith_datapoint_serialize( &sensor_data, &data_packet.sensor_data);
 
     // Healing: Ensure peer is in our list of peers
-    ESP_ERROR_CHECK( zenith_now_add_peer( paired_core ) );
+    ESP_ERROR_CHECK( 
+        zenith_now_add_peer( paired_core ) 
+    );
 
     // Send data
     ESP_ERROR_CHECK( 

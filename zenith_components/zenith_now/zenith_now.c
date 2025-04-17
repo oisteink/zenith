@@ -37,6 +37,7 @@ esp_err_t zenith_now_configure_wifi(void)
 
 esp_err_t zenith_now_serialize_data(const zenith_now_packet_t *data, uint8_t **serialized_data, uint8_t *size)
 {
+    esp_err_t ret = ESP_OK;
     #ifdef ZNDEBUG
     ESP_LOGI(TAG, "zenith_now_Serialize_data()");
     #endif
@@ -59,14 +60,15 @@ esp_err_t zenith_now_serialize_data(const zenith_now_packet_t *data, uint8_t **s
     switch (data->type)
     {
     case ZENITH_PACKET_DATA:
-        memcpy(*serialized_data + 1, &data->sensor_data.temperature, SENSOR_DATA_SIZE);
-        memcpy(*serialized_data + 1 + SENSOR_DATA_SIZE, &data->sensor_data.humidity, SENSOR_DATA_SIZE);
+        ESP_RETURN_ON_FALSE(false, ESP_FAIL, TAG, "Needs implementation");
+//        memcpy(*serialized_data + 1, &data->sensor_data.temperature, SENSOR_DATA_SIZE);
+//        memcpy(*serialized_data + 1 + SENSOR_DATA_SIZE, &data->sensor_data.humidity, SENSOR_DATA_SIZE);
         break;
     case ZENITH_PACKET_ACK:
         (*serialized_data)[1] = data->ack_packet_type;
         break;
     }
-    return ESP_OK;
+    return ret;
 }
 
 zenith_now_packet_t zenith_now_deserialize_data(const uint8_t *serialized_data, int len)
@@ -83,8 +85,10 @@ zenith_now_packet_t zenith_now_deserialize_data(const uint8_t *serialized_data, 
     case ZENITH_PACKET_DATA:
         if (len >= SENSOR_DATA_SIZE * 2 + 1)
         {
-            memcpy(&data.sensor_data.temperature, &serialized_data[1], SENSOR_DATA_SIZE);
-            memcpy(&data.sensor_data.humidity, &serialized_data[1 + SENSOR_DATA_SIZE], SENSOR_DATA_SIZE);
+            ESP_LOGE( TAG, "Not implemented" );
+
+//            memcpy(&data.sensor_data.temperature, &serialized_data[1], SENSOR_DATA_SIZE);
+//            memcpy(&data.sensor_data.humidity, &serialized_data[1 + SENSOR_DATA_SIZE], SENSOR_DATA_SIZE);
         }
         break;
     case ZENITH_PACKET_ACK:

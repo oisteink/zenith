@@ -5,12 +5,15 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_now.h"
 
-/* Structures for espnow data */
+/* espnow data */
+
+#define ZENITH_NOW_MAX_DATA_LEN     ESP_NOW_MAX_DATA_LEN_V2 
+
 typedef float zenith_now_sensor_datatype_t;
 
 typedef struct zenith_now_sensor_data {
-    zenith_now_sensor_datatype_t temperature;
-    zenith_now_sensor_datatype_t humidity;
+    uint8_t num_points;
+    uint8_t data_buffer[ZENITH_NOW_MAX_DATA_LEN];
 } zenith_now_sensor_data_t;
 
 typedef enum zenith_now_packet_type {

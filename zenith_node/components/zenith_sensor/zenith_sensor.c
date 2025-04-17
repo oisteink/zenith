@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "esp_err.h"
 #include "esp_check.h"
 #include "string.h"
 #include "zenith_sensor.h"
@@ -17,34 +18,42 @@ esp_err_t zentih_sensor_init( zenith_sensor_handle_t sensor ) {
     return ret;
 }
 
-// my head is exploding! 
-esp_err_t zenith_sensor_data_add_datapoint( zenith_sensor_data_t *sensor_data, zenith_sensor_datapoint_t datapoint ) { // Pass sensor_data by reference
-    if ( !sensor_data ) 
-        return ESP_ERR_INVALID_ARG;
+esp_err_t zenith_sensor_read_data( zenith_sensor_handle_t sensor, zenith_datapoints_handle_t datapoints ) {
+    esp_err_t ret;
+    ESP_RETURN_ON_FALSE(
+        sensor || datapoints,
+        ESP_ERR_INVALID_ARG,
+        TAG, "NULL pointer passed to zenith_sensor_read_data"
+    );
 
-    zenith_sensor_datapoint_node_t **tail = &sensor_data->datapoint_nodes; // point tail at the pointer for data_nodes
-    while ( *tail ) // As long as what it points to isn't NULL
-        tail = &(*tail)->next; // Dereference tail, and point to a pointer (&) to it's next (pointer)
+    zenith_datapoint_t datapoint = { 0 };
 
-    *tail = calloc(1, sizeof( zenith_sensor_datapoint_node_t ) ); // We've reached the first pointer that points to NULL, so we add the new node here.
-    if ( !*tail )
-        return ESP_ERR_NO_MEM;
+    if ( sensor->read_humidity )
+    {
+        datapoint.data_type = ZENITH_DATAPOINT_HUMIDITY;
+        ret = sensor->read_humidity( sensor, &datapoint.data);
+        if ( ret == ESP_OK )
+            ret = zenith_datapoint_add( datapoints, datapoint );
+    }
+    
+    if ( sensor->read_pressure )
+    {
+        datapoint.data_type = ZENITH_DATAPOINT_PRESSURE;
+        ret = sensor->read_pressure( sensor, &datapoint.data);
+        if ( ret == ESP_OK )
+            ret = zenith_datapoint_add( datapoints, datapoint );
+    }
 
-    (*tail)->datapoint = datapoint; // Copy the data over
-    sensor_data->number_of_datapoints++; // Increase the count. 
-
-    return ESP_OK;          
-}
-
-
-/* esp_err_t zenith_sensor_read_data( zenith_sensor_handle_t sensor, zenith_sensor_data_t *sensor_data ) {
-    esp_err_t ret = ESP_OK;
-    zenith_sensor_data_t *data = calloc( 1, sizeof( zenith_sensor_data_t ) );
-
-    sensor_data = data;
+    if ( sensor->read_temperature )
+    {
+        datapoint.data_type = ZENITH_DATAPOINT_TEMPERATURE;
+        ret = sensor->read_temperature( sensor, &datapoint.data);
+        if ( ret == ESP_OK )
+            ret = zenith_datapoint_add( datapoints, datapoint );
+    }
     return ret;
 }
- */
+
 esp_err_t zenith_sensor_read_temperature( zenith_sensor_handle_t sensor, float *out_temp ) {
     esp_err_t ret = ESP_OK;
     ESP_RETURN_ON_FALSE(

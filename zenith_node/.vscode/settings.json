@@ -24,7 +24,9 @@
     "zenith_sensor_aht30.h": "c",
     "zenith_sensor_bmp280.h": "c",
     "i2c_master.h": "c",
-    "i2c_bus.h": "c"
+    "i2c_bus.h": "c",
+    "zenith_nodes.h": "c",
+    "zenith_datapoints.h": "c"
   },
   "idf.portWin": "COM10",
   "idf.flashType": "UART"

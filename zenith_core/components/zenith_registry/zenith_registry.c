@@ -89,13 +89,15 @@ esp_err_t zenith_registry_create( zenith_registry_handle_t* handle )
 {
     ESP_RETURN_ON_FALSE(
         handle,
-        ESP_ERR_INVALID_ARG, TAG, "Null handle"
+        ESP_ERR_INVALID_ARG, 
+        TAG, "Null handle"
     );
 
     zenith_registry_t *registry = calloc(1, sizeof(zenith_registry_t));
     ESP_RETURN_ON_FALSE(
         registry,
-        ESP_ERR_NO_MEM, TAG, "Error allocating registry"
+        ESP_ERR_NO_MEM, 
+        TAG, "Error allocating registry"
     );
 
     *handle = registry;
