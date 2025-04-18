@@ -8,6 +8,7 @@
 
 #include "zenith_now.h"
 #include "zenith_blink.h"
+#include "zenith_registry.h"
 
 #include "zenith_core.h"
 #include "zenith_ui_core.h"
@@ -18,6 +19,7 @@
 static const char *TAG = "zenith-core";
 
 zenith_registry_handle_t node_registry = NULL;
+zenith_datapoints_handle_t datapoints_handles[ZENITH_REGISTRY_MAX_NODES];
 
 esp_err_t initialize_nvs(void){
     // Initialize default NVS partition
@@ -37,16 +39,26 @@ esp_err_t initialize_nvs(void){
 /// @param packet The packet received
 static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet)
 {
+    // Add peer to registry if new
+    int8_t reg_index = zenith_registry_index_of_mac( node_registry, mac );
+    if ( reg_index < 0 )
+    {
+        zenith_node_t node;
+        memcpy(&node.mac, mac, ESP_NOW_ETH_ALEN);
+        ESP_ERROR_CHECK( zenith_registry_add( node_registry, node ) );
+        reg_index = zenith_registry_index_of_mac( node_registry, mac );
+        if ( datapoints_handles[ reg_index ] ) {
+            zentih_datapoints_clear( datapoints_handles[ reg_index ] );
+        }
+        else {
+            datapoints_handles[ reg_index ] = calloc(1, sizeof( zenith_datapoints_t ) );
+        }
+            
+    }
+
     switch (packet->type)
     {
         case ZENITH_PACKET_PAIRING:
-            // Add peer to registry if new
-            if ( zenith_registry_index_of_mac( node_registry, mac ) < 0 )
-            {
-                zenith_node_t node;
-                memcpy(&node.mac, mac, ESP_NOW_ETH_ALEN);
-                ESP_ERROR_CHECK( zenith_registry_add( node_registry, node ) );
-            }
             // Send pairing ack
             ESP_ERROR_CHECK( zenith_now_send_ack( mac, ZENITH_PACKET_PAIRING ) );
             ESP_ERROR_CHECK( zenith_blink( BLINK_PAIRING_COMPLETE ) );
@@ -54,13 +66,22 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
 
         case ZENITH_PACKET_DATA:
             zenith_blink( BLINK_DATA_RECEIVE );
-            ESP_LOGI( TAG, "Received data from "MACSTR" : %.2f°  %.2f%%", MAC2STR(mac), packet->sensor_data.temperature, packet->sensor_data.humidity );
-            ESP_ERROR_CHECK( zenith_now_send_ack( mac, ZENITH_PACKET_DATA ) );
+            ESP_ERROR_CHECK( 
+                zenith_now_send_ack( mac, ZENITH_PACKET_DATA ) 
+            );
+            ESP_LOGI( TAG, "Received data from "MACSTR, MAC2STR( mac ) );
+            // Ta innholdet fra packet->sensor_data.data_buffer og les inn i node_registry->nodes[0].datapoints
+            // Find the nodes datapoints
+            zenith_datapoints_handle_t datapoints = datapoints_handles[reg_index];
+            // add this data to node data.
+            ESP_ERROR_CHECK(
+                    zenith_datapoints_from_zenith_now( &packet->sensor_data, datapoints )
+            );
             break;
     }
 }
 
- void app_main( void )
+void app_main( void )
 {
     ESP_LOGI( TAG, "app_main()" );
     // Initialize default NVS partition

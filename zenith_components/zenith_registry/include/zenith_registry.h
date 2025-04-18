@@ -1,6 +1,7 @@
 #pragma once
 #include "freertos/FreeRTOS.h"
 #include "esp_now.h"
+#include "zenith_datapoints.h"
 
 #define ZENITH_REGISTRY_MAX_NODES 10
 #define ZENITH_REGISTRY_MAX_NAME_LEN 10

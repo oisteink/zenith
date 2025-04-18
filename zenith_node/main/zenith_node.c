@@ -14,6 +14,7 @@
 #include "zenith_blink.h"
 
 #include "zenith_node.h"
+#include "zenith_datapoints.h"
 
 #include "zenith_sensor_aht30.h"
 #include "zenith_sensor_bmp280.h"
@@ -126,7 +127,7 @@ void send_data( zenith_sensor_handle_t sensor ){
     ESP_ERROR_CHECK( 
         zenith_sensor_read_data( sensor, &sensor_data )
     );
-    zenith_datapoint_serialize( &sensor_data, &data_packet.sensor_data);
+    zenith_datapoints_to_zenith_now( &sensor_data, &data_packet.sensor_data );
 
     // Healing: Ensure peer is in our list of peers
     ESP_ERROR_CHECK( 

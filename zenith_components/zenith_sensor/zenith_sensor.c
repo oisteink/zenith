@@ -1,3 +1,4 @@
+//zenith_sensor.c
 #include <stdio.h>
 #include "esp_err.h"
 #include "esp_check.h"
@@ -19,7 +20,7 @@ esp_err_t zentih_sensor_init( zenith_sensor_handle_t sensor ) {
 }
 
 esp_err_t zenith_sensor_read_data( zenith_sensor_handle_t sensor, zenith_datapoints_handle_t datapoints ) {
-    esp_err_t ret;
+    esp_err_t ret = ESP_OK;
     ESP_RETURN_ON_FALSE(
         sensor || datapoints,
         ESP_ERR_INVALID_ARG,
@@ -33,7 +34,7 @@ esp_err_t zenith_sensor_read_data( zenith_sensor_handle_t sensor, zenith_datapoi
         datapoint.data_type = ZENITH_DATAPOINT_HUMIDITY;
         ret = sensor->read_humidity( sensor, &datapoint.data);
         if ( ret == ESP_OK )
-            ret = zenith_datapoint_add( datapoints, datapoint );
+            ret = zenith_datapoints_add( datapoints, datapoint );
     }
     
     if ( sensor->read_pressure )
@@ -41,7 +42,7 @@ esp_err_t zenith_sensor_read_data( zenith_sensor_handle_t sensor, zenith_datapoi
         datapoint.data_type = ZENITH_DATAPOINT_PRESSURE;
         ret = sensor->read_pressure( sensor, &datapoint.data);
         if ( ret == ESP_OK )
-            ret = zenith_datapoint_add( datapoints, datapoint );
+            ret = zenith_datapoints_add( datapoints, datapoint );
     }
 
     if ( sensor->read_temperature )
@@ -49,7 +50,7 @@ esp_err_t zenith_sensor_read_data( zenith_sensor_handle_t sensor, zenith_datapoi
         datapoint.data_type = ZENITH_DATAPOINT_TEMPERATURE;
         ret = sensor->read_temperature( sensor, &datapoint.data);
         if ( ret == ESP_OK )
-            ret = zenith_datapoint_add( datapoints, datapoint );
+            ret = zenith_datapoints_add( datapoints, datapoint );
     }
     return ret;
 }

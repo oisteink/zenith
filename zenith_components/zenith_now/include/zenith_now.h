@@ -6,11 +6,10 @@
 #include "esp_now.h"
 
 /* espnow data */
+// just a random number - should be enough with 200b for
+#define ZENITH_NOW_MAX_DATA_LEN     200  
 
-#define ZENITH_NOW_MAX_DATA_LEN     ESP_NOW_MAX_DATA_LEN_V2 
-
-typedef float zenith_now_sensor_datatype_t;
-
+// static sized buffer
 typedef struct zenith_now_sensor_data {
     uint8_t num_points;
     uint8_t data_buffer[ZENITH_NOW_MAX_DATA_LEN];

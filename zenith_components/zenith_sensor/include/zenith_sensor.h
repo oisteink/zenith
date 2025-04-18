@@ -9,10 +9,10 @@ typedef zenith_sensor_t *zenith_sensor_handle_t;
 
 
 struct zenith_sensor_s {
-    esp_err_t ( *initialize )( zenith_sensor_t *sensor ); // Called to initialize the sensor
-    esp_err_t ( *read_temperature )( zenith_sensor_t *sensor, float *out_temp ); 
-    esp_err_t ( *read_humidity )( zenith_sensor_t *sensor, float *out_humidity );
-    esp_err_t ( *read_pressure )( zenith_sensor_t *sensor, float *out_pressure );
+    esp_err_t ( *initialize )( zenith_sensor_handle_t sensor ); // Called to initialize the sensor
+    esp_err_t ( *read_temperature )( zenith_sensor_handle_t sensor, float *out_temp ); 
+    esp_err_t ( *read_humidity )( zenith_sensor_handle_t sensor, float *out_humidity );
+    esp_err_t ( *read_pressure )( zenith_sensor_handle_t sensor, float *out_pressure );
 };
 
 struct zenith_sensor_float_s {
@@ -30,7 +30,7 @@ struct zenith_sensor_humidity_s {
 
 
 esp_err_t zentih_sensor_init( zenith_sensor_handle_t sensor );
-esp_err_t zenith_sensor_read_data( zenith_sensor_handle_t sensor, zenith_datapoints_t *data );
+esp_err_t zenith_sensor_read_data( zenith_sensor_handle_t sensor, zenith_datapoints_t *datapoints );
 esp_err_t zenith_sensor_read_temperature( zenith_sensor_handle_t sensor, float *out_temp );
 esp_err_t zenith_sensor_read_humidity( zenith_sensor_handle_t sensor, float *out_humidity );
 esp_err_t zenith_sensor_read_pressure( zenith_sensor_handle_t sensor, float *out_pressure );

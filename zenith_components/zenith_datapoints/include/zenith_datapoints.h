@@ -1,4 +1,5 @@
 #pragma once
+#include "zenith_now.h"
 
 typedef enum zenith_datapoints_datatype_e {
     ZENITH_DATAPOINT_TEMPERATURE,
@@ -28,6 +29,7 @@ typedef struct zenith_datapoints_s {
 
 typedef zenith_datapoints_t *zenith_datapoints_handle_t;
 
-esp_err_t zenith_datapoint_add( zenith_datapoints_handle_t datapoints_handle, zenith_datapoint_t datapoint );
-esp_err_t zenith_datapoints_deserialize( const zenith_now_sensor_data_t *bytestream, zenith_datapoints_t *datapoints );
-esp_err_t zenith_datapoint_serialize( const zenith_datapoints_t *sensor_data, zenith_now_sensor_data_t *bytestream );
+esp_err_t zenith_datapoints_add( zenith_datapoints_handle_t datapoints_handle, zenith_datapoint_t datapoint );
+esp_err_t zentih_datapoints_clear( zenith_datapoints_handle_t datapoints_handle );
+esp_err_t zenith_datapoints_from_zenith_now( const zenith_now_sensor_data_t *zenith_now_sensor_data, zenith_datapoints_handle_t datapoints );
+esp_err_t zenith_datapoints_to_zenith_now( const zenith_datapoints_handle_t datapoints, zenith_now_sensor_data_t *zenith_now_sensor_data );
