@@ -18,7 +18,6 @@ esp_err_t zenith_datapoints_add( zenith_datapoints_handle_t datapoints_handle, z
         ESP_ERR_INVALID_ARG,
         TAG, "NULL handle passed to zenith_datapoint_add"
     );
-
     zenith_datapoint_node_t **tail = &datapoints_handle->datapoint_nodes; 
     while ( *tail ) 
         tail = &( *tail )->next;
@@ -43,7 +42,6 @@ esp_err_t zenith_datapoints_from_zenith_now( const zenith_now_sensor_data_t *zen
         ESP_ERR_INVALID_ARG,
         TAG, "NULL passed to zenith_datapoints_deserialize"
     );
-
     if ( datapoints->number_of_datapoints > 0 ) {
         // clean out current values 
         ESP_ERROR_CHECK(
@@ -67,7 +65,6 @@ esp_err_t zenith_datapoints_from_zenith_now( const zenith_now_sensor_data_t *zen
 
         memcpy( &datapoint.data, ptr, sizeof( float ) );
         ptr += sizeof( float );
-
         ret = zenith_datapoints_add(datapoints, datapoint);
         if ( ret != ESP_OK ) 
             break;

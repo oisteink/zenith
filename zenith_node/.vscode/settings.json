@@ -28,6 +28,6 @@
     "zenith_nodes.h": "c",
     "zenith_datapoints.h": "c"
   },
-  "idf.portWin": "COM10",
+  "idf.portWin": "COM5",
   "idf.flashType": "UART"
 }

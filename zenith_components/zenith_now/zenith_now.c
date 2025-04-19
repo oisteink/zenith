@@ -22,22 +22,51 @@ static zenith_tx_cb_t user_tx_cb = NULL;
 
 /// @brief Initializes WiFi with parameters needed for Zenith Now
 /// @return ESP_OK on success
-esp_err_t zenith_now_configure_wifi(void)
+/// @todo Add error handling and cleanup
+esp_err_t zenith_now_configure_wifi( void )
 {
-    #ifdef ZNDEBUG
-    ESP_LOGI(TAG, "zenith_now_configure_wifi()");
-    #endif
-    esp_err_t err = esp_netif_init();
-    if (err == ESP_OK) err = esp_event_loop_create_default();
+    esp_err_t ret = ESP_OK;
+    ESP_LOGD( TAG, "zenith_now_configure_wifi()" );
+
+    ESP_RETURN_ON_ERROR(
+        esp_netif_init(),
+        TAG, "Error initializing netif"
+    );
+
+    ESP_RETURN_ON_ERROR(
+        esp_event_loop_create_default(),
+        TAG, "Error creating event loop"
+    );
+
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    if (err == ESP_OK) err = esp_wifi_init(&cfg);
-    if (err == ESP_OK) err = esp_wifi_set_storage(WIFI_STORAGE_RAM); // Set this to WIFI_STORAGE_FLASH?
-    if (err == ESP_OK) err = esp_wifi_set_mode(WIFI_MODE_STA);
-    if (err == ESP_OK) err = esp_wifi_start();
-    if (err == ESP_OK) err = esp_wifi_set_channel(ZENITH_WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
+    ESP_RETURN_ON_ERROR(
+        esp_wifi_init( &cfg ),
+        TAG, "Error initializing WiFi"
+    );
+
+    ESP_RETURN_ON_ERROR(
+        esp_wifi_set_storage( WIFI_STORAGE_RAM ), // Set this to WIFI_STORAGE_FLASH?
+        TAG, "Error setting WiFi storage"
+    );
+
+    ESP_RETURN_ON_ERROR(
+        esp_wifi_set_mode( WIFI_MODE_STA ), // Set this to WIFI_MODE_APSTA?
+        TAG, "Error setting WiFi mode"
+    );
+
+    ESP_RETURN_ON_ERROR(
+        esp_wifi_start(),
+        TAG, "Error starting WiFi"
+    );
+
+    ESP_RETURN_ON_ERROR(
+        esp_wifi_set_channel( ZENITH_WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE), 
+        TAG, "Error setting WiFi power save"
+    );
+
     // If I want long range esp-now:
     // ESP_ERROR_CHECK( esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N|WIFI_PROTOCOL_LR) );
-    return err;
+    return ret;
 }
 
 /// @brief Translate a zenith_now packet into a bytestream, typically this bytestream goes into an esp-now packet.
@@ -83,31 +112,30 @@ esp_err_t zenith_now_serialize_data(const zenith_now_packet_t *data, uint8_t **s
 /// @param serialized_data bytestream representing a zenith_now packet
 /// @param len length of the bytestream
 /// @return zenith_now packet created from the serialized data
-/// @todo maybe make this return esp_err_t like the rest, and have the return value as the last *paramenter
-zenith_now_packet_t zenith_now_deserialize_data(const uint8_t *serialized_data, int len)
+/// @todo maybe make this return esp_err_t like the rest, and have the return value as the last *paramenter. replace assert with real error handling
+zenith_now_packet_t zenith_now_deserialize_data( const uint8_t *serialized_data, int len )
 {
-    #ifdef ZNDEBUG
-    ESP_LOGI(TAG, "zenith_now_deserialize_data()");
-    #endif
-    assert(len >= 1); // We need at least 1 bytes
+    ESP_LOGD( TAG, "zenith_now_deserialize_data()" );
+    assert( len >= 1 ); // We need at least 1 bytes
+
     // Unpack data from serialized_data into packet
     zenith_now_packet_t data = {
-        .type = serialized_data[0],
+        .type = serialized_data[ 0 ],
     };
-    switch (data.type)
-    {
-    case ZENITH_PACKET_DATA:
-        data.sensor_data.num_points = serialized_data[1];
-        memcpy(&data.sensor_data.data_buffer, serialized_data + 2, len - 2);
-        break;
-    case ZENITH_PACKET_ACK:
-        if (len >= 2)
-        {
-            data.ack_packet_type = serialized_data[1];
-        }
-        break;
-    default:
-        break;
+
+    switch ( data.type ) {
+        case ZENITH_PACKET_DATA:
+            data.sensor_data.num_points = serialized_data[ 1 ];
+            memcpy(&data.sensor_data.data_buffer, serialized_data + 2, len - 2); //This should be heap, not stack. We know how much data there is, so just allocate that big buffer. We will pass on size as number of datapoints
+            break;
+        case ZENITH_PACKET_ACK:
+            if (len >= 2)
+            {
+                data.ack_packet_type = serialized_data[1];
+            }
+            break;
+        default:
+            break;
     }
     return data;
 }
@@ -170,23 +198,24 @@ esp_err_t zenith_now_send_ack(const uint8_t *peer_addr, zenith_now_packet_type_t
 /// @param peer_addr mac address we want to send to
 /// @param data_packet the zenith_now packet we want to send
 /// @return ESP_OK, otherwise passed on error values.
-esp_err_t zenith_now_send_packet(const uint8_t *peer_addr, const zenith_now_packet_t data_packet)
+esp_err_t zenith_now_send_packet( const uint8_t *peer_addr, const zenith_now_packet_t data_packet )
 {
     esp_err_t ret = ESP_OK;
-    #ifdef ZNDEBUG
-    ESP_LOGI(TAG, "zenith_now_Send_packet()");
-    #endif
+    ESP_LOGD( TAG, "zenith_now_Send_packet()" );
     // Assure that we can send to this address / heal the list
     if ( !esp_now_is_peer_exist( peer_addr ) )
         ESP_RETURN_ON_ERROR(
             zenith_now_add_peer(peer_addr),
             TAG, "Error adding peer on send"
-    );
+        );
+
     uint8_t data_size = 0;
     uint8_t *data = NULL;
-    ret = zenith_now_serialize_data(&data_packet, &data, &data_size);
+    ret = zenith_now_serialize_data( &data_packet, &data, &data_size );
+
     if (ret == ESP_OK) 
         ret = esp_now_send(peer_addr, data, data_size);
+        
     free(data);
     return ret;
 }
@@ -209,14 +238,15 @@ static void zenith_now_espnow_send_cb( const uint8_t *mac_addr, esp_now_send_sta
 /// @param recv_info from and to addresses
 /// @param data packet data bytestream
 /// @param len length of packet data bytestream
-static void zenith_now_espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len)
+static void zenith_now_espnow_recv_cb( const esp_now_recv_info_t *recv_info, const uint8_t *data, int len )
 {
-    #ifdef ZNDEBUG
-    ESP_LOGI(TAG, "zenith_now_espnow_recv_cb");
-    #endif
-    zenith_now_event_t event = {.type = RECEIVE_EVENT, .receive.data_packet = zenith_now_deserialize_data(data, len)};
-    memcpy(&event.receive.source_mac, recv_info->src_addr, ESP_NOW_ETH_ALEN);
-    xQueueSend(zenith_now_event_queue, &event, 0); // Should perhaps wait some tics, but there shouldn't be many packets in the queue and there's room for 10.
+    ESP_LOGD(TAG, "zenith_now_espnow_recv_cb");
+    zenith_now_event_t event = {
+        .type = RECEIVE_EVENT, 
+        .receive.data_packet = zenith_now_deserialize_data( data, len ) 
+    };
+    memcpy( &event.receive.source_mac, recv_info->src_addr, ESP_NOW_ETH_ALEN );
+    xQueueSend( zenith_now_event_queue, &event, 0 ); // Should perhaps wait some tics, but there shouldn't be many packets in the queue and there's room for 10.
 }
 
 /// @brief Configure ESP-NOW for Zenith Now
@@ -350,26 +380,40 @@ esp_err_t configure_zenith_now( void )
 
     // Create zenith now event group (flags)
     zenith_now_event_group = xEventGroupCreate();
-    if (!zenith_now_event_group)
-    {
-        ESP_LOGE(TAG, "Error creating zenith_now_event_group");
-        return ESP_FAIL;
-    }
+    ESP_RETURN_ON_FALSE(
+        zenith_now_event_group,
+        ESP_FAIL,
+        TAG, "Error creating zenith_now_event_group"
+    );
 
     // Initialize default NVS partition
-    esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    ret = nvs_flash_init();
+    if ( ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND )
     {
         // Itsa fucked - erase and retry
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        err = nvs_flash_init();
+        ESP_ERROR_CHECK( nvs_flash_erase() );
+        ret = nvs_flash_init();
     }
-    ESP_ERROR_CHECK(err);
+    ESP_RETURN_ON_ERROR(
+        ret,
+        TAG, "Error initializing NVS"
+    );
+
     // Configure WiFi
-    err = zenith_now_configure_wifi();
-    if (err == ESP_OK)
-        err = zenith_now_configure_espnow();
-    if (err == ESP_OK)
-        err = xTaskCreate(zenith_now_event_handler, "zn_events", 2048, NULL, tskIDLE_PRIORITY, NULL) == pdPASS ? ESP_OK : ESP_FAIL; // 2k stack - er det nok?
-    return err;
+    ESP_RETURN_ON_ERROR(
+        zenith_now_configure_wifi(),
+        TAG, "Error configuring WiFi"
+    );
+    ESP_RETURN_ON_ERROR(
+        zenith_now_configure_espnow(),
+        TAG, "Error configuring ESP-NOW"
+    );
+
+    ret = xTaskCreate( zenith_now_event_handler, "zn_events", 4096, NULL, tskIDLE_PRIORITY, NULL ) == pdPASS ? ESP_OK : ESP_FAIL; // 2k stack - er det nok? nei, men kankje fire er.
+    ESP_RETURN_ON_ERROR(
+        ret,
+        TAG, "Error creating zenith_now_event_handler task"
+    );
+
+    return ret;
 }

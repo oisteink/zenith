@@ -41,27 +41,38 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
 {
     // Add peer to registry if new
     int8_t reg_index = zenith_registry_index_of_mac( node_registry, mac );
-    if ( reg_index < 0 )
-    {
+    ESP_LOGI(TAG, "Initial reg_index: %d", reg_index);
+    if ( reg_index < 0 ) {
         zenith_node_t node;
         memcpy(&node.mac, mac, ESP_NOW_ETH_ALEN);
         ESP_ERROR_CHECK( zenith_registry_add( node_registry, node ) );
         reg_index = zenith_registry_index_of_mac( node_registry, mac );
-        if ( datapoints_handles[ reg_index ] ) {
-            zentih_datapoints_clear( datapoints_handles[ reg_index ] );
-        }
-        else {
-            datapoints_handles[ reg_index ] = calloc(1, sizeof( zenith_datapoints_t ) );
-        }
-            
+    }
+
+    ESP_LOGI(TAG, "Stabile reg_index: %d", reg_index);
+
+    if ( datapoints_handles[ reg_index ] ) {
+        zentih_datapoints_clear( datapoints_handles[ reg_index ] );
+        free( datapoints_handles[ reg_index ] );
+        datapoints_handles[ reg_index ] = NULL;
+    }
+
+    datapoints_handles[ reg_index ] = calloc(1, sizeof( zenith_datapoints_t ) );
+    if ( !datapoints_handles[ reg_index ] ) {
+        ESP_LOGE( TAG, "Failed to allocate memory for datapoints" );
+        return;
     }
 
     switch (packet->type)
     {
         case ZENITH_PACKET_PAIRING:
             // Send pairing ack
-            ESP_ERROR_CHECK( zenith_now_send_ack( mac, ZENITH_PACKET_PAIRING ) );
-            ESP_ERROR_CHECK( zenith_blink( BLINK_PAIRING_COMPLETE ) );
+            ESP_ERROR_CHECK( 
+                zenith_now_send_ack( mac, ZENITH_PACKET_PAIRING ) 
+            );
+            ESP_ERROR_CHECK( 
+                zenith_blink( BLINK_PAIRING_COMPLETE ) 
+            );
             break;
 
         case ZENITH_PACKET_DATA:
@@ -69,7 +80,7 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
             ESP_ERROR_CHECK( 
                 zenith_now_send_ack( mac, ZENITH_PACKET_DATA ) 
             );
-            ESP_LOGI( TAG, "Received data from "MACSTR, MAC2STR( mac ) );
+            ESP_LOGI( TAG, "Received data from reg_index %d mac: "MACSTR, reg_index, MAC2STR( mac ) );
             // Ta innholdet fra packet->sensor_data.data_buffer og les inn i node_registry->nodes[0].datapoints
             // Find the nodes datapoints
             zenith_datapoints_handle_t datapoints = datapoints_handles[reg_index];
@@ -110,7 +121,7 @@ void app_main( void )
     };
     zenith_ui_handle_t core_ui_handle = NULL;
     ESP_ERROR_CHECK( zenith_ui_new_core( &ui_config, &core_ui_handle ) );
-    ESP_ERROR_CHECK( zenith_ui_test( core_ui_handle ) );
+    //ESP_ERROR_CHECK( zenith_ui_test( core_ui_handle ) );
     zenith_ui_core_fade_lcd_brightness(75, 1500);
 
     // Initialize blinker

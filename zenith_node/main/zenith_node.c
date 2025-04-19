@@ -89,7 +89,7 @@ void pair_with_core( void ){
     return ESP_OK;
 }
 
-#define BMP280_SENSOR
+//#define BMP280_SENSOR
 
 esp_err_t init_sensor( zenith_sensor_handle_t *sensor, i2c_master_bus_handle_t i2c_bus ){
 #ifdef BMP280_SENSOR
@@ -102,7 +102,7 @@ esp_err_t init_sensor( zenith_sensor_handle_t *sensor, i2c_master_bus_handle_t i
 #else
     zenith_sensor_aht30_config_t aht30_config = DEFAULT_ZENITH_SENSOR_AHT30_CONFIG;
     ESP_RETURN_ON_ERROR(
-        zenith_sensor_new_aht30( i2c_bus, &aht30_config, sensor);
+        zenith_sensor_new_aht30( i2c_bus, &aht30_config, sensor ),
         TAG, "Error creating sensor"
     );
 #endif

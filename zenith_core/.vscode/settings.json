@@ -24,7 +24,8 @@
     "esp_lcd_panel_vendor.h": "c",
     "esp_lcd_panel_ops.h": "c",
     "zenith_now.h": "c",
-    "esp_check.h": "c"
+    "esp_check.h": "c",
+    "random": "c"
   },
   "idf.espIdfPathWin": "D:/Espressif/frameworks/esp-idf/",
   "idf.toolsPathWin": "D:\\Espressif",
