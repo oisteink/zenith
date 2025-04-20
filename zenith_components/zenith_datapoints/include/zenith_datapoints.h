@@ -31,5 +31,5 @@ typedef zenith_datapoints_t *zenith_datapoints_handle_t;
 
 esp_err_t zenith_datapoints_add( zenith_datapoints_handle_t datapoints_handle, zenith_datapoint_t datapoint );
 esp_err_t zentih_datapoints_clear( zenith_datapoints_handle_t datapoints_handle );
-esp_err_t zenith_datapoints_from_zenith_now( const zenith_now_sensor_data_t *zenith_now_sensor_data, zenith_datapoints_handle_t datapoints );
-esp_err_t zenith_datapoints_to_zenith_now( const zenith_datapoints_handle_t datapoints, zenith_now_sensor_data_t *zenith_now_sensor_data );
+esp_err_t zenith_datapoints_from_zenith_now( const zenith_now_packet_t * in_packet, zenith_datapoints_handle_t *out_datapoints );
+esp_err_t zenith_datapoints_to_zenith_now( const zenith_datapoints_handle_t datapoints, zenith_now_packet_handle_t *out_packet );

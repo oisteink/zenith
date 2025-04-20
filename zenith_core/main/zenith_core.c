@@ -81,13 +81,18 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
                 zenith_now_send_ack( mac, ZENITH_PACKET_DATA ) 
             );
             ESP_LOGI( TAG, "Received data from reg_index %d mac: "MACSTR, reg_index, MAC2STR( mac ) );
+            ESP_LOGI( TAG, "number_of_datapoints: %d", packet->node_data.num_points );
+            for ( int i = 0; i < packet->node_data.num_points; ++i ) {
+                ESP_LOGI( TAG, "datapoint %d: type: %d value: %d", i, packet->node_data.datapoints[i].reading_type, packet->node_data.datapoints[i].value );
+            }
             // Ta innholdet fra packet->sensor_data.data_buffer og les inn i node_registry->nodes[0].datapoints
             // Find the nodes datapoints
-            zenith_datapoints_handle_t datapoints = datapoints_handles[reg_index];
+            //zenith_datapoints_handle_t datapoints = NULL;
             // add this data to node data.
-            ESP_ERROR_CHECK(
-                    zenith_datapoints_from_zenith_now( &packet->sensor_data, datapoints )
-            );
+            //ESP_ERROR_CHECK(
+            //        zenith_datapoints_from_zenith_now( packet, &datapoints )
+            //);
+            //free(packet->node_data.datapoints);
             break;
     }
 }

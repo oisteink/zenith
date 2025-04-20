@@ -69,77 +69,6 @@ esp_err_t zenith_now_configure_wifi( void )
     return ret;
 }
 
-/// @brief Translate a zenith_now packet into a bytestream, typically this bytestream goes into an esp-now packet.
-/// @param data The zentih_now packet
-/// @param serialized_data The serialized data
-/// @param size The size of the serialized_data
-esp_err_t zenith_now_serialize_data(const zenith_now_packet_t *data, uint8_t **serialized_data, uint8_t *size)
-{
-    esp_err_t ret = ESP_OK;
-    #ifdef ZNDEBUG
-    ESP_LOGI(TAG, "zenith_now_Serialize_data()");
-    #endif
-    // set size
-    *size = 1;
-    switch (data->type)
-    {
-    case ZENITH_PACKET_DATA:
-        *size +=  sizeof( zenith_now_sensor_data_t );
-        break;
-    case ZENITH_PACKET_ACK:
-        *size += 1;
-        break;
-    }
-    // allocate return buffer
-    *serialized_data = malloc(*size);
-    if (!*serialized_data)
-        return ESP_ERR_NO_MEM;
-    (*serialized_data)[0] = data->type;
-    switch (data->type)
-    {
-    case ZENITH_PACKET_DATA:
-        (*serialized_data)[1] = data->sensor_data.num_points;
-        memcpy( *serialized_data +2, data->sensor_data.data_buffer, ZENITH_NOW_MAX_DATA_LEN );
-        break;
-    case ZENITH_PACKET_ACK:
-        (*serialized_data)[1] = data->ack_packet_type;
-        break;
-    }
-    return ret;
-}
-
-/// @brief Translate a bytestream into a zenith_now_packet, typically this bytestream comes from esp-now packet.
-/// @param serialized_data bytestream representing a zenith_now packet
-/// @param len length of the bytestream
-/// @return zenith_now packet created from the serialized data
-/// @todo maybe make this return esp_err_t like the rest, and have the return value as the last *paramenter. replace assert with real error handling
-zenith_now_packet_t zenith_now_deserialize_data( const uint8_t *serialized_data, int len )
-{
-    ESP_LOGD( TAG, "zenith_now_deserialize_data()" );
-    assert( len >= 1 ); // We need at least 1 bytes
-
-    // Unpack data from serialized_data into packet
-    zenith_now_packet_t data = {
-        .type = serialized_data[ 0 ],
-    };
-
-    switch ( data.type ) {
-        case ZENITH_PACKET_DATA:
-            data.sensor_data.num_points = serialized_data[ 1 ];
-            memcpy(&data.sensor_data.data_buffer, serialized_data + 2, len - 2); //This should be heap, not stack. We know how much data there is, so just allocate that big buffer. We will pass on size as number of datapoints
-            break;
-        case ZENITH_PACKET_ACK:
-            if (len >= 2)
-            {
-                data.ack_packet_type = serialized_data[1];
-            }
-            break;
-        default:
-            break;
-    }
-    return data;
-}
-
 /// @brief Converts packet type to string - probably made during early debug phase.
 /// @param packet_type packet type to translate
 /// @return the string that the packet type translates to
@@ -159,36 +88,36 @@ const char *zenith_now_packet_type_to_str(zenith_now_packet_type_t packet_type)
 /// @param packet_type Type of packet to await ack for
 /// @param wait_ms Timeout
 /// @return ESP_OK if ack was received, ESP_ERR_TIMEOUT if timed out
-esp_err_t zenith_now_wait_for_ack(zenith_now_packet_type_t packet_type, uint32_t wait_ms)
-{
-    #ifdef ZNDEBUG
-    ESP_LOGI(TAG, "zenith_now_wait_for_ack()");
-    #endif
+esp_err_t zenith_now_wait_for_ack( zenith_now_packet_type_t packet_type, uint32_t wait_ms ) {
+    ESP_LOGD(TAG, "zenith_now_wait_for_ack()");
+
     EventBits_t event_bit = 0;
-    switch (packet_type)
-    {
-    case ZENITH_PACKET_PAIRING:
-        event_bit = PAIRING_ACK_BIT;
-        break;
-    case ZENITH_PACKET_DATA:
-        event_bit = DATA_ACK_BIT;
-        break;
-    default:
-        ESP_LOGE(TAG, "Illegal packet type for ACK");
-        return ESP_ERR_INVALID_ARG;
+
+    switch ( packet_type ) {
+        case ZENITH_PACKET_PAIRING:
+            event_bit = PAIRING_ACK_BIT;
+            break;
+
+        case ZENITH_PACKET_DATA:
+            event_bit = DATA_ACK_BIT;
+            break;
+
+        default:
+            ESP_LOGE( TAG, "Illegal packet type for ACK" );
+            return ESP_ERR_INVALID_ARG;
     }
-    return (xEventGroupWaitBits(zenith_now_event_group, event_bit, pdTRUE, pdFALSE, pdMS_TO_TICKS(wait_ms)) > 0) ? ESP_OK : ESP_ERR_TIMEOUT;
+    return ( xEventGroupWaitBits( zenith_now_event_group, event_bit, pdTRUE, pdFALSE, pdMS_TO_TICKS( wait_ms ) ) > 0 ) 
+        ? ESP_OK 
+        : ESP_ERR_TIMEOUT;
 }
 
 /// @brief Sends an ack to the peer for the packet type supplied
 /// @param peer_addr the mac address to send to
 /// @param packet_type the packet type to ack
 /// @return ESP_OK
-esp_err_t zenith_now_send_ack(const uint8_t *peer_addr, zenith_now_packet_type_t packet_type)
+esp_err_t zenith_now_send_ack( const uint8_t *peer_addr, zenith_now_packet_type_t packet_type )
 {
-    #ifdef ZNDEBUG
-    ESP_LOGI(TAG, "zenith_now_send_ack()");
-    #endif
+    ESP_LOGD(TAG, "zenith_now_send_ack()");
     zenith_now_packet_t ack = {.type = ZENITH_PACKET_ACK, .ack_packet_type = packet_type};
     zenith_now_send_packet(peer_addr, ack);
     return ESP_OK;
@@ -209,14 +138,8 @@ esp_err_t zenith_now_send_packet( const uint8_t *peer_addr, const zenith_now_pac
             TAG, "Error adding peer on send"
         );
 
-    uint8_t data_size = 0;
-    uint8_t *data = NULL;
-    ret = zenith_now_serialize_data( &data_packet, &data, &data_size );
-
-    if (ret == ESP_OK) 
-        ret = esp_now_send(peer_addr, data, data_size);
-        
-    free(data);
+    uint8_t data_size = sizeof( zenith_now_packet_t ) + sizeof( zenith_node_data_t ) + data_packet.node_data.num_points * sizeof( zenith_node_datapoint_t );
+    ret = esp_now_send(peer_addr, ( uint8_t * ) &data_packet, data_size);
     return ret;
 }
 
@@ -241,9 +164,17 @@ static void zenith_now_espnow_send_cb( const uint8_t *mac_addr, esp_now_send_sta
 static void zenith_now_espnow_recv_cb( const esp_now_recv_info_t *recv_info, const uint8_t *data, int len )
 {
     ESP_LOGD(TAG, "zenith_now_espnow_recv_cb");
+    zenith_now_packet_t *packet = malloc( len );
+    if ( !packet ) {
+        ESP_LOGE( TAG, "Failed to allocate memory for received packet" );
+        return;
+    }
+    // Copy the the packet   
+    memcpy( packet, data, len );
+
     zenith_now_event_t event = {
         .type = RECEIVE_EVENT, 
-        .receive.data_packet = zenith_now_deserialize_data( data, len ) 
+        .receive.data_packet = packet,
     };
     memcpy( &event.receive.source_mac, recv_info->src_addr, ESP_NOW_ETH_ALEN );
     xQueueSend( zenith_now_event_queue, &event, 0 ); // Should perhaps wait some tics, but there shouldn't be many packets in the queue and there's room for 10.
@@ -257,15 +188,16 @@ esp_err_t zenith_now_configure_espnow( void )
 {
     ESP_LOGD( TAG, "zenith_now_configure_espnow()" );
     // Initialize esp_now
-    esp_err_t err = esp_now_init();
+    esp_err_t ret;
+    ret = esp_now_init();
     // Initialize send callback
-    if ( err == ESP_OK )
-        err = esp_now_register_send_cb( zenith_now_espnow_send_cb );
+    if ( ret == ESP_OK )
+        ret = esp_now_register_send_cb( zenith_now_espnow_send_cb );
     // Initialize receive callback
-    if ( err == ESP_OK )
-        err = esp_now_register_recv_cb( zenith_now_espnow_recv_cb );
+    if ( ret == ESP_OK )
+        ret = esp_now_register_recv_cb( zenith_now_espnow_recv_cb );
 
-    return err;
+    return ret;
 }
 
 /// @brief The zenith_now event handler task. Handles the events that get posted to the queue by the esp_now_callbacks.
@@ -278,35 +210,39 @@ static void zenith_now_event_handler( void *pvParameters )
     zenith_now_event_t event;
     while (xQueueReceive(zenith_now_event_queue, &event, portMAX_DELAY) == pdTRUE)
     {
-        switch (event.type)
-        {
-        case SEND_EVENT:
-            // IDGAF about success - user callback can deal with it
-            if (user_tx_cb)
-                user_tx_cb(event.send.dest_mac, event.send.status);
-            break;
-        case RECEIVE_EVENT:
-            switch (event.receive.data_packet.type)
-            {
-            case ZENITH_PACKET_ACK:
-                switch (event.receive.data_packet.ack_packet_type)
-                {
-                case ZENITH_PACKET_DATA:
-                    xEventGroupSetBits(zenith_now_event_group, DATA_ACK_BIT);
-                    break;
-                case ZENITH_PACKET_PAIRING:
-                    xEventGroupSetBits(zenith_now_event_group, PAIRING_ACK_BIT);
-                    break;
-                default:
-                    ESP_LOGE(TAG, "ACK unsupported for packet type");
-                    break;
-                }
+        switch (event.type) {
+            case SEND_EVENT:
+                // IDGAF about success - user callback can deal with it
+                if (user_tx_cb)
+                    user_tx_cb(event.send.dest_mac, event.send.status);
                 break;
-            }
-            // Data and Pairing is user_rc_cb stuff, but they can get all and do what they want. I'm done processing it
-            if (user_rx_cb)
-                user_rx_cb(event.receive.source_mac, &event.receive.data_packet);
-            break;
+            case RECEIVE_EVENT:
+                if ( event.receive.data_packet->type == ZENITH_PACKET_ACK) {
+
+                    switch ( event.receive.data_packet->ack_packet_type ) {
+                
+                        case ZENITH_PACKET_DATA:
+                            xEventGroupSetBits(zenith_now_event_group, DATA_ACK_BIT);
+                            break;
+
+                        case ZENITH_PACKET_PAIRING:
+                            xEventGroupSetBits(zenith_now_event_group, PAIRING_ACK_BIT);
+                            break;
+
+                        default:
+                            ESP_LOGE(TAG, "ACK unsupported for packet type");
+                            break;
+
+                    }
+                }
+                // Data and Pairing is user_rc_cb stuff, but they can get all and do what they want. I'm done processing it
+                if (user_rx_cb)
+                    user_rx_cb(event.receive.source_mac, event.receive.data_packet);
+                free( event.receive.data_packet ); // Free the data buffer in the packet
+                break;
+            default:
+                ESP_LOGE(TAG, "Unknown event type");
+                break;
         }
     }
 }

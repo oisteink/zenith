@@ -11,14 +11,14 @@ static int64_t t_fine;
 
 esp_err_t _read_temperature(zenith_sensor_t *sensor, float *out_temp) {
     // to be implemented
-    *out_temp = 0.0;
+    *out_temp = 25.0;
     return ESP_OK;
 }
 
 esp_err_t _read_pressure(zenith_sensor_t *sensor, float *out_pressure) {
     // to be implemented
     _read_temperature( sensor, out_pressure );
-    *out_pressure = 0.0;
+    *out_pressure = 1000.1;
     return ESP_OK;
 }
 

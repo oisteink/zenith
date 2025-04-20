@@ -26,8 +26,12 @@
     "i2c_master.h": "c",
     "i2c_bus.h": "c",
     "zenith_nodes.h": "c",
-    "zenith_datapoints.h": "c"
+    "zenith_datapoints.h": "c",
+    "array": "c",
+    "string": "c",
+    "string_view": "c",
+    "span": "c"
   },
-  "idf.portWin": "COM5",
+  "idf.portWin": "COM10",
   "idf.flashType": "UART"
 }

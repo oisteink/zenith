@@ -89,7 +89,7 @@ void pair_with_core( void ){
     return ESP_OK;
 }
 
-//#define BMP280_SENSOR
+#define BMP280_SENSOR
 
 esp_err_t init_sensor( zenith_sensor_handle_t *sensor, i2c_master_bus_handle_t i2c_bus ){
 #ifdef BMP280_SENSOR
@@ -119,16 +119,21 @@ esp_err_t init_sensor( zenith_sensor_handle_t *sensor, i2c_master_bus_handle_t i
 void send_data( zenith_sensor_handle_t sensor ){
     
     // Initialize data packet
-    zenith_now_packet_t data_packet = {
-        .type = ZENITH_PACKET_DATA 
-    }; 
+     zenith_now_packet_t * data_packet = NULL;
 
     zenith_datapoints_t sensor_data = { 0 };
     ESP_ERROR_CHECK( 
         zenith_sensor_read_data( sensor, &sensor_data )
     );
-    zenith_datapoints_to_zenith_now( &sensor_data, &data_packet.sensor_data );
+    
+    ESP_LOGI( TAG, "%d sensor data read", sensor_data.number_of_datapoints );
 
+    zenith_datapoints_to_zenith_now( &sensor_data, &data_packet );
+    
+    ESP_LOGI( TAG, "%d sensor data converted to zenith now packet", data_packet->node_data.num_points );
+    for ( int i = 0; i < data_packet->node_data.num_points; i++ ) {
+        ESP_LOGI( TAG, "Sensor %d dat: %d | %d", i, data_packet->node_data.datapoints[i].value, data_packet->node_data.datapoints[i].reading_type );
+    }
     // Healing: Ensure peer is in our list of peers
     ESP_ERROR_CHECK( 
         zenith_now_add_peer( paired_core ) 
@@ -136,7 +141,7 @@ void send_data( zenith_sensor_handle_t sensor ){
 
     // Send data
     ESP_ERROR_CHECK( 
-        zenith_now_send_packet( paired_core, data_packet ) 
+        zenith_now_send_packet( paired_core, *data_packet ) 
     ); 
     // If we don't get ack, increase number of failed sends
     failed_sends = ( zenith_now_wait_for_ack( ZENITH_PACKET_DATA, 2000 ) == ESP_OK ) ? 0 : failed_sends + 1; 

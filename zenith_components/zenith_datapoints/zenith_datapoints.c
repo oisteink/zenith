@@ -35,13 +35,31 @@ esp_err_t zenith_datapoints_add( zenith_datapoints_handle_t datapoints_handle, z
 // Bytestream is 
 // 1 byte number of datapoints
 // 1 byte datatype, then 4 bytes float
-esp_err_t zenith_datapoints_from_zenith_now( const zenith_now_sensor_data_t *zenith_now_sensor_data, zenith_datapoints_handle_t datapoints ) {
+esp_err_t zenith_datapoints_from_zenith_now( const zenith_now_packet_t * in_packet, zenith_datapoints_handle_t *out_datapoints ) {
     esp_err_t ret = ESP_OK;
     ESP_RETURN_ON_FALSE(
-        zenith_now_sensor_data && datapoints,
+        in_packet,
         ESP_ERR_INVALID_ARG,
-        TAG, "NULL passed to zenith_datapoints_deserialize"
+        TAG, "NULL packet handle zenith_datapoints_from_zenith_now"
     );
+
+    ESP_RETURN_ON_FALSE(
+        out_datapoints == NULL,
+        ESP_ERR_INVALID_ARG,
+        TAG, "Datapoints should be NULL"
+    );
+
+    // hmm - om dette er lurt?
+    if ( *out_datapoints == NULL ) 
+        *out_datapoints = calloc( 1, sizeof( zenith_datapoints_t ) );
+
+    zenith_datapoints_handle_t datapoints = calloc( 1, sizeof( zenith_datapoints_t ) );
+    ESP_RETURN_ON_FALSE(
+        datapoints,
+        ESP_ERR_NO_MEM,
+        TAG, "Failed to allocate memory for datapoints"
+    );
+
     if ( datapoints->number_of_datapoints > 0 ) {
         // clean out current values 
         ESP_ERROR_CHECK(
@@ -49,54 +67,51 @@ esp_err_t zenith_datapoints_from_zenith_now( const zenith_now_sensor_data_t *zen
         );
     }
     
-    const uint8_t *ptr = zenith_now_sensor_data->data_buffer;
-
-    for ( int i = 0; i < zenith_now_sensor_data->num_points; ++i ) {
-        ESP_RETURN_ON_FALSE(
-            zenith_now_sensor_data->data_buffer + ZENITH_NOW_MAX_DATA_LEN > ptr + sizeof( uint8_t ) + sizeof( float ),
-            ESP_ERR_INVALID_SIZE,
-            TAG, "Whoa! we've ran out of bytestream while deserializing"
-        );
-
+    for ( int i = 0; i < in_packet->node_data.num_points; ++i ) {
+        
         zenith_datapoint_t datapoint =
         {
-            .data_type = ( zenith_datapoints_datatype_t ) *ptr++,
+            .data_type = in_packet->node_data.datapoints[i].reading_type,
+            .data = in_packet->node_data.datapoints[i].value,
         };
 
-        memcpy( &datapoint.data, ptr, sizeof( float ) );
-        ptr += sizeof( float );
         ret = zenith_datapoints_add(datapoints, datapoint);
         if ( ret != ESP_OK ) 
             break;
     }
 
+    *out_datapoints = datapoints;
     return ret;
 }
 
 
-esp_err_t zenith_datapoints_to_zenith_now( const zenith_datapoints_handle_t datapoints, zenith_now_sensor_data_t *zenith_now_sensor_data ) {
+esp_err_t zenith_datapoints_to_zenith_now( const zenith_datapoints_handle_t datapoints, zenith_now_packet_handle_t *out_packet ) {
     esp_err_t ret = ESP_OK;
     ESP_RETURN_ON_FALSE(
-        datapoints || zenith_now_sensor_data,
+        datapoints,
         ESP_ERR_INVALID_ARG,
         TAG, "NULL passed to zenith_nodes_data_serialize"
     );
-    
-    uint8_t *ptr = zenith_now_sensor_data->data_buffer;
-    int remaining = ZENITH_NOW_MAX_DATA_LEN;
+    int packet_size = sizeof( zenith_now_packet_t ) + sizeof( zenith_node_data_t ) + ( datapoints->number_of_datapoints * sizeof( zenith_node_datapoint_t ) );
+    ESP_LOGI( TAG, "datapoints -> zenith now, packet size: %d", packet_size );
+    zenith_now_packet_t *packet = calloc( 1, packet_size );
+    packet->type = ZENITH_PACKET_DATA;
+    packet->node_data.num_points = datapoints->number_of_datapoints;
+
     zenith_datapoint_node_t *node = datapoints->datapoint_nodes;
-
-    zenith_now_sensor_data->num_points = 0;
-
-    while ( node && remaining >= sizeof( uint8_t ) + sizeof( float )) {
-        *ptr++ = ( uint8_t ) node->datapoint.data_type;
-        memcpy( ptr, &node->datapoint.data, sizeof( float ));
-        ptr += sizeof( float );
-        remaining -= ( sizeof( uint8_t ) + sizeof( float ));
-        zenith_now_sensor_data->num_points++;
+    for ( int i = 0; i < datapoints->number_of_datapoints; ++i ) {
+        if ( node == NULL ) {
+            ret = ESP_ERR_INVALID_STATE;
+            break;
+        }
+        packet->node_data.datapoints[i].reading_type = node->datapoint.data_type;
+        packet->node_data.datapoints[i].value = node->datapoint.data;
+        ESP_LOGI( TAG, "node %d: %d | %.2f", i, node->datapoint.data_type, node->datapoint.data );
+        ESP_LOGI( TAG, "node %d: %d | %d", i, packet->node_data.datapoints[i].reading_type, packet->node_data.datapoints[i].value );
         node = node->next;
     }
 
+    *out_packet = packet;
     return ret;
 }
 
