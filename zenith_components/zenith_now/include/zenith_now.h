@@ -2,12 +2,14 @@
 #pragma once
 
 //#define ZNDEBUG 1
-#define ZENITH_NOW_MAJOR_VERSION 0
+#define ZENITH_NOW_MAJOR_VERSION 1
 #define ZENITH_NOW_MINOR_VERSION 1
 #define ZENITH_NOW_VERSION ((ZENITH_NOW_MAJOR_VERSION << 4) | ZENITH_NOW_MINOR_VERSION)
 
 #include "freertos/FreeRTOS.h"
 #include "esp_now.h"
+
+#define ZENITH_NOW_PAYLOAD_SIZE( packet_size )  ( ( packet_size ) - sizeof( zenith_now_packet_header_t ) )
 
 /* espnow data */
 
@@ -39,9 +41,13 @@ typedef struct __attribute__((packed)) zenith_now_payload_data_s {
     zenith_node_datapoint_t datapoints[];
 } zenith_now_payload_data_t;
 
-typedef struct __attribute__((packed)) zenith_now_packet_s {
+typedef struct __attribute__((packed)) zenith_now_packet_header_s {
     zenith_now_packet_type_t type; // Packet type (1 byte)
     uint8_t version; // Packet version (1 byte)
+} zenith_now_packet_header_t;
+
+typedef struct __attribute__((packed)) zenith_now_packet_s {
+    zenith_now_packet_header_t header; // Packet header
     uint8_t payload[]; // Payload (depending on packet type)
 } zenith_now_packet_t;
 

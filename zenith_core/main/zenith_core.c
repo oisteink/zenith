@@ -5,6 +5,7 @@
 #include "esp_mac.h"
 #include "nvs_flash.h"
 #include "esp_err.h"
+#include "esp_check.h"
 
 #include "zenith_now.h"
 #include "zenith_blink.h"
@@ -39,17 +40,30 @@ esp_err_t initialize_nvs(void){
 /// @param packet The packet received
 static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet)
 {
+    ESP_RETURN_VOID_ON_FALSE(
+        mac && packet,
+        TAG, "NULL pointer passed to core_rx_callback"
+    );
+
+
+    ESP_RETURN_VOID_ON_FALSE(
+        packet->header.version == ZENITH_NOW_VERSION,
+        TAG, "Version mismatch: %d != %d", packet->header.version, ZENITH_NOW_VERSION
+    );
+
     // Add peer to registry if new
     int8_t reg_index = zenith_registry_index_of_mac( node_registry, mac );
     if ( reg_index < 0 ) {
         zenith_node_t node;
-        memcpy(&node.mac, mac, ESP_NOW_ETH_ALEN);
-        ESP_ERROR_CHECK( zenith_registry_add( node_registry, node ) );
+        memcpy( &node.mac, mac, ESP_NOW_ETH_ALEN );
+        ESP_ERROR_CHECK( 
+            zenith_registry_add( node_registry, node ) 
+        );
         reg_index = zenith_registry_index_of_mac( node_registry, mac );
     }
 
 
-    switch ( packet->type )
+    switch ( packet->header.type )
     {
         case ZENITH_PACKET_PAIRING:
             ESP_LOGI( TAG, "Received pairing request from mac: "MACSTR, MAC2STR( mac ) );
@@ -77,7 +91,7 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
             // Store data in registry
             break;
         default:
-            ESP_LOGI( TAG, "default unhandled type %d from reg index %d mac: "MACSTR, packet->type, reg_index, MAC2STR( mac ) );
+            ESP_LOGI( TAG, "default unhandled type %d from reg index %d mac: "MACSTR, packet->header.type, reg_index, MAC2STR( mac ) );
             break;
         }
     // packet will be freed in the event handler that calls us

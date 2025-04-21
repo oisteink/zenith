@@ -97,7 +97,7 @@ esp_err_t zenith_datapoints_to_zenith_now( const zenith_datapoints_handle_t data
     int packet_size = sizeof( zenith_now_packet_t ) + sizeof( zenith_now_payload_data_t ) + ( datapoints->number_of_datapoints * sizeof( zenith_node_datapoint_t ) );
     ESP_LOGI( TAG, "datapoints -> zenith now, packet size: %d", packet_size );
     zenith_now_packet_t *packet = calloc( 1, packet_size );
-    packet->type = ZENITH_PACKET_DATA;
+    packet->header.type = ZENITH_PACKET_DATA;
     zenith_now_payload_data_t *payload = ( zenith_now_payload_data_t * ) packet->payload;
     payload->num_points = datapoints->number_of_datapoints;
 

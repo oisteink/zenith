@@ -42,7 +42,8 @@ void pair_with_core( void ){
 
     // Create pairing packet
     zenith_now_packet_t data_packet = { 
-        .type = ZENITH_PACKET_PAIRING
+        .header.type = ZENITH_PACKET_PAIRING,
+        .header.version = ZENITH_NOW_VERSION,
     }; 
 
     // initialize counter for pairing retries
@@ -130,6 +131,7 @@ void send_data( zenith_sensor_handle_t sensor ){
 
     // check this one!!
     zenith_datapoints_to_zenith_now( &sensor_data, &data_packet );
+    data_packet->header.version = ZENITH_NOW_VERSION;
     zenith_now_payload_data_t *data = (zenith_now_payload_data_t *) data_packet->payload;
     ESP_LOGI( TAG, "%d sensor data converted to zenith now packet", data->num_points );
     for ( int i = 0; i < data->num_points; i++ ) {
@@ -158,10 +160,10 @@ void send_data( zenith_sensor_handle_t sensor ){
 /// @brief 
 /// @param mac MAC address of the sender
 /// @param packet The packet received
-void node_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet){
-    switch (packet->type) {
+void node_rx_callback( const uint8_t *mac, const zenith_now_packet_t *packet ) {
+    switch ( packet->header.type ) {
         case ZENITH_PACKET_ACK:
-            zenith_now_payload_ack_t *ack = (zenith_now_payload_ack_t *) packet->payload;
+            zenith_now_payload_ack_t *ack = ( zenith_now_payload_ack_t * ) packet->payload;
             switch ( ack->ack_for_type ) {
 
                 case ZENITH_PACKET_PAIRING:                    
@@ -174,7 +176,7 @@ void node_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet){
             }
             break;
         default:
-            ESP_LOGI( TAG, "node_rx_cb: unhandled packet type %d", packet->type );
+            ESP_LOGI( TAG, "node_rx_cb: unhandled packet type %d", packet->header.type );
             break;
     }
 }
