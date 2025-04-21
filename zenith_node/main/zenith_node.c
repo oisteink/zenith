@@ -59,7 +59,7 @@ void pair_with_core( void ){
 
         // Send the pairing request
         ESP_ERROR_CHECK(
-            zenith_now_send_packet( broadcast, data_packet )
+            zenith_now_send_packet( broadcast, &data_packet )
         ); 
     } while ( zenith_now_wait_for_ack( ZENITH_PACKET_PAIRING, 5000 ) != ESP_OK ); // Wait 5 seconds for ack, and retry if we timed out
 
@@ -142,7 +142,7 @@ void send_data( zenith_sensor_handle_t sensor ){
 
     // Send data
     ESP_ERROR_CHECK( 
-        zenith_now_send_packet( paired_core, *data_packet ) 
+        zenith_now_send_packet( paired_core, data_packet ) 
     ); 
     // If we don't get ack, increase number of failed sends
     failed_sends = ( zenith_now_wait_for_ack( ZENITH_PACKET_DATA, 2000 ) == ESP_OK ) ? 0 : failed_sends + 1; 

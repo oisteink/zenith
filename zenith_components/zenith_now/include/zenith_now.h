@@ -91,7 +91,7 @@ void zenith_now_set_rx_cb( zenith_rx_cb_t rx_cb );
 void zenith_now_set_tx_cb( zenith_tx_cb_t tx_cb );
 esp_err_t zenith_now_add_peer( const uint8_t * mac );
 esp_err_t zenith_now_remove_peer( const uint8_t *mac );
-esp_err_t zenith_now_send_packet( const uint8_t *peer_addr, const zenith_now_packet_t data_packet );
+esp_err_t zenith_now_send_packet( const uint8_t *peer_addr, const zenith_now_packet_t *data_packet );
 esp_err_t zenith_now_send_ack( const uint8_t *peer_addr, zenith_now_packet_type_t packet_type );
 esp_err_t zenith_now_wait_for_ack( zenith_now_packet_type_t packet_type, uint32_t wait_ms );
 const char * zenith_now_packet_type_to_str( zenith_now_packet_type_t packet_type );

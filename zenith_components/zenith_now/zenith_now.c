@@ -135,7 +135,9 @@ esp_err_t zenith_now_send_ack( const uint8_t *peer_addr, zenith_now_packet_type_
 
     (( zenith_now_payload_ack_t * ) ack->payload)->ack_for_type = packet_type;
 
-    ret = zenith_now_send_packet(peer_addr, *ack);
+    ESP_LOGI(TAG, "sending this packet to ack:");
+    ESP_LOG_BUFFER_HEX(TAG, (uint8_t *)ack, packet_size);
+    ret = zenith_now_send_packet(peer_addr, ack);
 
     free(ack);
     return ret;
@@ -145,10 +147,10 @@ esp_err_t zenith_now_send_ack( const uint8_t *peer_addr, zenith_now_packet_type_
 /// @param peer_addr mac address we want to send to
 /// @param data_packet the zenith_now packet we want to send
 /// @return ESP_OK, otherwise passed on error values.
-esp_err_t zenith_now_send_packet( const uint8_t *peer_addr, const zenith_now_packet_t data_packet )
+esp_err_t zenith_now_send_packet( const uint8_t *peer_addr, const zenith_now_packet_t *data_packet )
 {
     esp_err_t ret = ESP_OK;
-    ESP_LOGD( TAG, "zenith_now_Send_packet()" );
+    ESP_LOGI( TAG, "zenith_now_Send_packet()" );
     // Assure that we can send to this address / heal the list
     if ( !esp_now_is_peer_exist( peer_addr ) )
         ESP_RETURN_ON_ERROR(
@@ -157,14 +159,14 @@ esp_err_t zenith_now_send_packet( const uint8_t *peer_addr, const zenith_now_pac
         );
 
     size_t payload_size = 0;
-    switch ( data_packet.type ) {
+    switch ( data_packet->type ) {
         case ZENITH_PACKET_PAIRING:
             ESP_LOGD( TAG, "Pairing packet" );
             payload_size = sizeof( zenith_now_payload_pairing_t );
             break;
         case ZENITH_PACKET_DATA:
             ESP_LOGD( TAG, "Data packet" );
-            zenith_now_payload_data_t *data_payload = ( zenith_now_payload_data_t * ) data_packet.payload;
+            zenith_now_payload_data_t *data_payload = ( zenith_now_payload_data_t * ) data_packet->payload;
             payload_size = sizeof( zenith_now_payload_data_t ) + sizeof(zenith_node_datapoint_t) * data_payload->num_points;
             break;
         case ZENITH_PACKET_ACK:
@@ -176,8 +178,12 @@ esp_err_t zenith_now_send_packet( const uint8_t *peer_addr, const zenith_now_pac
             return ESP_ERR_INVALID_ARG;
     }
     // Cast payload to the correct type?
+    
     uint8_t data_size = sizeof( zenith_now_packet_t ) + payload_size;
-    ret = esp_now_send(peer_addr, ( uint8_t * ) &data_packet, data_size);
+    ESP_LOGI(TAG, "Sending packet\tsize: %d type: %d", data_size, data_packet->type);
+    ESP_LOG_BUFFER_HEX(TAG, (uint8_t *)data_packet, data_size);
+
+    ret = esp_now_send(peer_addr, ( const uint8_t * ) data_packet, data_size);
     return ret;
 }
 
