@@ -45,7 +45,6 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
         TAG, "NULL pointer passed to core_rx_callback"
     );
 
-
     ESP_RETURN_VOID_ON_FALSE(
         packet->header.version == ZENITH_NOW_VERSION,
         TAG, "Version mismatch: %d != %d", packet->header.version, ZENITH_NOW_VERSION
@@ -132,10 +131,12 @@ void app_main( void )
     // Initialize blinker
     ESP_ERROR_CHECK( init_zenith_blink( WS2812_GPIO ) );
 
-    // Initialize Zenith with default configuration
-    ESP_ERROR_CHECK( configure_zenith_now() );
+    // Initialize Zenith Now
+    zenith_now_config_t zn_config = {
+        .rx_cb = core_rx_callback,
+    };
+    zenith_now_init( &zn_config );
 
-    zenith_now_set_rx_cb( core_rx_callback );
 
     // Staying alive!
     vTaskDelay(portMAX_DELAY);
