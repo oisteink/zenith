@@ -133,9 +133,14 @@ void app_main( void )
     ESP_ERROR_CHECK( init_zenith_blink( WS2812_GPIO ) );
 
     // Initialize Zenith with default configuration
-    ESP_ERROR_CHECK( configure_zenith_now() );
+    //ESP_ERROR_CHECK( configure_zenith_now() );
+        
+    zenith_now_config_t zn_config = {
+        .rx_cb = core_rx_callback,
+        .tx_cb = NULL,
+    };
+    zenith_now_init( &zn_config );
 
-    zenith_now_set_rx_cb( core_rx_callback );
 
     // Staying alive!
     vTaskDelay(portMAX_DELAY);

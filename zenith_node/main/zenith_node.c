@@ -204,11 +204,13 @@ void app_main( void ){
     ); 
 
     // Set up zenith-now
+    zenith_now_config_t zenith_now_config = {
+        .rx_cb = node_rx_callback,
+        .tx_cb = NULL,
+    };
     ESP_ERROR_CHECK( 
-        configure_zenith_now() 
+        zenith_now_init( &zenith_now_config )
     ); 
-    zenith_now_set_rx_cb( node_rx_callback );
-
     // Check for paired core and pair if not
     if ( !saved_peer() ) 
         pair_with_core(); 
