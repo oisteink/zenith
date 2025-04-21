@@ -22,30 +22,44 @@ enum {
 };
 
 
+/// @brief Zenith Now ack packet payload.
 typedef struct __attribute__((packed)) zenith_now_payload_ack_s {
     zenith_now_packet_type_t ack_for_type;
 } zenith_now_payload_ack_t;
 
+/// @brief Zenith Now pairing packet payload.
 typedef struct __attribute__((packed)) zenith_now_payload_pairing_s {
     uint8_t flags; //  unused - could be stuff like supported zenith now version etc. node firmware version etc.
 } zenith_now_payload_pairing_t;
 
 /// @todo: this should probably be defined somewhere else - this is the same type that sensors should use to report.
+/// @brief Zenith Now node datapoint.
+/// @details This structure is used to represent a single data point from a node. It contains the value of the reading and the type of the reading.
 typedef struct __attribute__((packed)) zenith_node_datapoint_s {
-    uint8_t reading_type; // 1 byte
-    uint16_t value;       // 2 bytes
+    /// @brief The type of the datapoint.
+    /// @details This is a 1-byte value that indicates the type of datapoint.
+    uint8_t reading_type;
+    /// @brief The value of the datapoint.
+    /// @details This is a 2-byte value that represents the actual datapoint.
+    uint16_t value;      
 } zenith_node_datapoint_t; // zenith_now_data_dataptoint_t?
 
+/// @brief Zenith Now data packet payload.
+/// @details This structure is used to represent a data packet that contains multiple datapoints. The number of datapoints is specified in the num_points field.
 typedef struct __attribute__((packed)) zenith_now_payload_data_s {
     uint8_t num_points;
     zenith_node_datapoint_t datapoints[];
 } zenith_now_payload_data_t;
 
+/// @brief Zenith Now packet header.
+/// @details This structure is used to represent the header of a Zenith Now packet. It contains the type and version of the packet.
 typedef struct __attribute__((packed)) zenith_now_packet_header_s {
     zenith_now_packet_type_t type; // Packet type (1 byte)
     uint8_t version; // Packet version (1 byte)
 } zenith_now_packet_header_t;
 
+/// @brief Zenith Now packet.
+/// @details This structure is used to represent a Zenith Now packet. It contains the header and the payload. The payload size and format is determined by the type of packet.
 typedef struct __attribute__((packed)) zenith_now_packet_s {
     zenith_now_packet_header_t header; // Packet header
     uint8_t payload[]; // Payload (depending on packet type)
@@ -55,21 +69,29 @@ typedef zenith_now_packet_t *zenith_now_packet_handle_t;
 
 /* Structures for xQueue handling */
 
+/// @brief Zenith Now event types.
+/// @details This enum is used to represent the different types of events that can occur in the Zenith Now eventqueue. 
 typedef enum zenith_now_event_type {
     SEND_EVENT = 1,
     RECEIVE_EVENT = 2
 } zenith_now_event_type_t;
 
+/// @brief Zenith Now send event.
+/// @details This structure is used to represent a send event in the Zenith Now eventqueue. It contains the destination MAC address and the status of the send operation. I'm not totally sure about how to use these yet, but maybe this is where I should start to check for acks.
 typedef struct zenith_now_send_event {
     uint8_t dest_mac[ESP_NOW_ETH_ALEN];
     esp_now_send_status_t status;
 } zenith_now_send_event_t;
 
+/// @brief Zenith Now receive event.
+/// @details This structure is used to represent a receive event in the Zenith Now eventqueue. It contains the source MAC address and a pointer to the data packet that was received.
 typedef struct zenith_now_receive_event {
     uint8_t source_mac[ESP_NOW_ETH_ALEN];
     zenith_now_packet_t *data_packet;
 } zenith_now_receive_event_t;
 
+/// @brief Zenith Now event.
+/// @details This structure is used to represent an event in the Zenith Now eventqueue. It contains the type of event and a union that can hold either a send event or a receive event. Ive grown kinda tired of unions already and might just make this a dull pointer.
 typedef struct zenith_event {
     zenith_now_event_type_t type;
     union {
@@ -92,7 +114,12 @@ typedef void ( *zenith_tx_cb_t )( const uint8_t *mac, esp_now_send_status_t stat
 extern QueueHandle_t zenith_now_event_queue;
 extern EventGroupHandle_t zenith_now_event_group;
 
+/// @brief Configures zenith now.
+/// @details This function initializes the ESP-NOW protocol and sets up the event queue and event group. It also registers the send and receive callbacks for ESP-NOW.
 esp_err_t configure_zenith_now( void );
+
+/// @brief Sets the receive callback.
+/// @todo: What the fuck man? we need to make zenith now into a proper thing. Create a handle to it and execte actions like sending acks or packets, or setting CB-s.
 void zenith_now_set_rx_cb( zenith_rx_cb_t rx_cb );
 void zenith_now_set_tx_cb( zenith_tx_cb_t tx_cb );
 esp_err_t zenith_now_add_peer( const uint8_t * mac );
