@@ -94,10 +94,16 @@ esp_err_t zenith_datapoints_to_zenith_now( const zenith_datapoints_handle_t data
         ESP_ERR_INVALID_ARG,
         TAG, "NULL passed to zenith_nodes_data_serialize"
     );
-    int packet_size = sizeof( zenith_now_packet_t ) + sizeof( zenith_now_payload_data_t ) + ( datapoints->number_of_datapoints * sizeof( zenith_node_datapoint_t ) );
+    
+    size_t payload_size = sizeof( zenith_now_payload_data_t ) + ( datapoints->number_of_datapoints * sizeof( zenith_node_datapoint_t ) );
+    int packet_size = sizeof( zenith_now_packet_t ) + payload_size;
     ESP_LOGI( TAG, "datapoints -> zenith now, packet size: %d", packet_size );
+
     zenith_now_packet_t *packet = calloc( 1, packet_size );
     packet->header.type = ZENITH_PACKET_DATA;
+    packet->header.version = ZENITH_NOW_VERSION;
+    packet->header.payload_size = payload_size;
+
     zenith_now_payload_data_t *payload = ( zenith_now_payload_data_t * ) packet->payload;
     payload->num_points = datapoints->number_of_datapoints;
 

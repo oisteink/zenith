@@ -201,8 +201,8 @@ esp_err_t zenith_now_send_data( const uint8_t *peer_mac, const zenith_now_payloa
     );
 
     data_packet->header.type = ZENITH_PACKET_DATA;
-    data_packet->header.version = ZENITH_NOW_VERSION;
     data_packet->header.payload_size = payload_size;
+    data_packet->header.version = ZENITH_NOW_VERSION;
 
     memcpy( data_packet->payload, data_payload, payload_size );
 
@@ -234,8 +234,8 @@ esp_err_t zenith_now_send_ack( const uint8_t *peer_mac, zenith_now_packet_type_t
     );
 
     ack->header.type = ZENITH_PACKET_ACK;
-    ack->header.version = ZENITH_NOW_VERSION;
     ack->header.payload_size = payload_size;
+    ack->header.version = ZENITH_NOW_VERSION;
 
     (( zenith_now_payload_ack_t * ) ack->payload)->ack_for_type = ack_type;
 
@@ -264,8 +264,8 @@ esp_err_t zenith_now_send_pairing( const uint8_t *peer_mac ) {
     );
 
     pairing->header.type = ZENITH_PACKET_PAIRING;
-    pairing->header.version = ZENITH_NOW_VERSION;
     pairing->header.payload_size = payload_size;
+    pairing->header.version = ZENITH_NOW_VERSION;
 
     (( zenith_now_payload_pairing_t * ) pairing->payload)->flags = 0;
 
@@ -282,6 +282,7 @@ esp_err_t zenith_now_send_pairing( const uint8_t *peer_mac ) {
 /// @param data_packet the zenith_now packet we want to send
 /// @return ESP_OK, otherwise passed on error values.
 esp_err_t zenith_now_send_packet( const uint8_t *peer_mac, const zenith_now_packet_t *packet ) {
+
     ESP_LOGD(TAG, "zenith_now_send_packet()");
     esp_err_t ret = ESP_OK;
 
@@ -324,6 +325,7 @@ static void zenith_now_espnow_send_cb( const uint8_t *mac_addr, esp_now_send_sta
 /// @param len length of packet data bytestream
 static void zenith_now_espnow_recv_cb( const esp_now_recv_info_t *recv_info, const uint8_t *data, int len ) {
     ESP_LOGD(TAG, "zenith_now_espnow_recv_cb");
+
     zenith_now_packet_t *packet = malloc( len ); // Free'd in the event handler
     if ( !packet ) {
         ESP_LOGE( TAG, "Failed to allocate memory for received packet" );
@@ -331,6 +333,9 @@ static void zenith_now_espnow_recv_cb( const esp_now_recv_info_t *recv_info, con
     }
     // Copy the the packet   
     memcpy( packet, data, len );
+
+    ESP_LOGI( TAG, "Received packet type: %d from: "MACSTR, packet->header.type, MAC2STR( recv_info->src_addr ) );
+    ESP_LOG_BUFFER_HEX_LEVEL( TAG, ( uint8_t * ) data, len, ESP_LOG_INFO );
 
     zenith_now_event_t event = {
         .type = RECEIVE_EVENT, 
