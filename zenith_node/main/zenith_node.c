@@ -128,11 +128,12 @@ void send_data( zenith_sensor_handle_t sensor ){
     
     ESP_LOGI( TAG, "%d sensor data read", sensor_data.number_of_datapoints );
 
+    // check this one!!
     zenith_datapoints_to_zenith_now( &sensor_data, &data_packet );
-    
-    ESP_LOGI( TAG, "%d sensor data converted to zenith now packet", data_packet->node_data.num_points );
-    for ( int i = 0; i < data_packet->node_data.num_points; i++ ) {
-        ESP_LOGI( TAG, "Sensor %d dat: %d | %d", i, data_packet->node_data.datapoints[i].value, data_packet->node_data.datapoints[i].reading_type );
+    zenith_now_payload_data_t *data = (zenith_now_payload_data_t *) data_packet->payload;
+    ESP_LOGI( TAG, "%d sensor data converted to zenith now packet", data->num_points );
+    for ( int i = 0; i < data->num_points; i++ ) {
+        ESP_LOGI( TAG, "Sensor %d dat: %d | %d", i, data->datapoints[i].value, data->datapoints[i].reading_type );
     }
     // Healing: Ensure peer is in our list of peers
     ESP_ERROR_CHECK( 
@@ -158,10 +159,10 @@ void send_data( zenith_sensor_handle_t sensor ){
 /// @param mac MAC address of the sender
 /// @param packet The packet received
 void node_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet){
-    switch ( packet->type ) {
-
+    switch (packet->type) {
         case ZENITH_PACKET_ACK:
-            switch ( packet->ack_packet_type ) {
+            zenith_now_payload_ack_t *ack = (zenith_now_payload_ack_t *) packet->payload;
+            switch ( ack->ack_for_type ) {
 
                 case ZENITH_PACKET_PAIRING:                    
                     memcpy( paired_core, mac, ESP_NOW_ETH_ALEN ); // Store peer mac in RTC memory
@@ -171,8 +172,13 @@ void node_rx_callback(const uint8_t *mac, const zenith_now_packet_t *packet){
                     failed_sends = 0; // Extra handling of late ack. Need a bit of luck for this to trigger after the send times out and before the deep_sleep starts.
                     break;
             }
+            break;
+        default:
+            ESP_LOGI( TAG, "node_rx_cb: unhandled packet type %d", packet->type );
+            break;
     }
 }
+ 
 
 void app_main( void ){
     // Debug code to enable easy reflashing

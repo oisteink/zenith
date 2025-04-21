@@ -2,39 +2,55 @@
 #pragma once
 
 //#define ZNDEBUG 1
+#define ZENITH_NOW_MAJOR_VERSION 0
+#define ZENITH_NOW_MINOR_VERSION 1
+#define ZENITH_NOW_VERSION ((ZENITH_NOW_MAJOR_VERSION << 4) | ZENITH_NOW_MINOR_VERSION)
 
 #include "freertos/FreeRTOS.h"
 #include "esp_now.h"
 
 /* espnow data */
-// just a random number - should be enough with 200b for
-#define ZENITH_NOW_MAX_DATA_LEN     200  
 
-// buffer format: uint8_t reading_type, uint16_t value
-/// @todo: this should probably be defined somewhere else - this is the same type that sensors should use to report.
-typedef struct __attribute__((packed)) zenith_node_datapoint_s {
-    uint8_t reading_type; // 1 byte
-    uint16_t value;       // 2 bytes
-} zenith_node_datapoint_t;
-
-typedef struct __attribute__((packed)) zenith_node_data_s {
-    uint8_t num_points;
-    zenith_node_datapoint_t datapoints[];
-} zenith_node_data_t;
-
-typedef enum zenith_now_packet_type_e {
+/* typedef enum zenith_now_packet_type_e {
     ZENITH_PACKET_PAIRING = 1, // Pairing Request
     ZENITH_PACKET_DATA,        // Sensor data
     ZENITH_PACKET_ACK,          // Acknowledgment for other packet types
     ZENITH_PACKET_MAX
-} zenith_now_packet_type_t;
+} zenith_now_packet_type_t; */
+
+
+typedef uint8_t zenith_now_packet_type_t;
+enum {
+    ZENITH_PACKET_PAIRING = 1,
+    ZENITH_PACKET_DATA,
+    ZENITH_PACKET_ACK,
+    ZENITH_PACKET_MAX
+};
+
+
+typedef struct __attribute__((packed)) zenith_now_payload_ack_s {
+    zenith_now_packet_type_t ack_for_type;
+} zenith_now_payload_ack_t;
+
+typedef struct __attribute__((packed)) zenith_now_payload_pairing_s {
+    uint8_t flags; //  unused - could be stuff like supported zenith now version etc. node firmware version etc.
+} zenith_now_payload_pairing_t;
+
+/// @todo: this should probably be defined somewhere else - this is the same type that sensors should use to report.
+typedef struct __attribute__((packed)) zenith_node_datapoint_s {
+    uint8_t reading_type; // 1 byte
+    uint16_t value;       // 2 bytes
+} zenith_node_datapoint_t; // zenith_now_data_dataptoint_t?
+
+typedef struct __attribute__((packed)) zenith_now_payload_data_s {
+    uint8_t num_points;
+    zenith_node_datapoint_t datapoints[];
+} zenith_now_payload_data_t;
 
 typedef struct __attribute__((packed)) zenith_now_packet_s {
-    uint8_t type; // Packet type (1 byte)
-    union {
-        zenith_node_data_t node_data; // For datapakker
-        uint8_t ack_packet_type;   // For ackpakker
-    };
+    zenith_now_packet_type_t type; // Packet type (1 byte)
+    uint8_t version; // Packet version (1 byte)
+    uint8_t payload[]; // Payload (depending on packet type)
 } zenith_now_packet_t;
 
 typedef zenith_now_packet_t *zenith_now_packet_handle_t;

@@ -41,7 +41,6 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
 {
     // Add peer to registry if new
     int8_t reg_index = zenith_registry_index_of_mac( node_registry, mac );
-    ESP_LOGI(TAG, "Initial reg_index: %d", reg_index);
     if ( reg_index < 0 ) {
         zenith_node_t node;
         memcpy(&node.mac, mac, ESP_NOW_ETH_ALEN);
@@ -49,23 +48,11 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
         reg_index = zenith_registry_index_of_mac( node_registry, mac );
     }
 
-    ESP_LOGI(TAG, "Stabile reg_index: %d", reg_index);
 
-    if ( datapoints_handles[ reg_index ] ) {
-        zentih_datapoints_clear( datapoints_handles[ reg_index ] );
-        free( datapoints_handles[ reg_index ] );
-        datapoints_handles[ reg_index ] = NULL;
-    }
-
-    datapoints_handles[ reg_index ] = calloc(1, sizeof( zenith_datapoints_t ) );
-    if ( !datapoints_handles[ reg_index ] ) {
-        ESP_LOGE( TAG, "Failed to allocate memory for datapoints" );
-        return;
-    }
-
-    switch (packet->type)
+    switch ( packet->type )
     {
         case ZENITH_PACKET_PAIRING:
+            ESP_LOGI( TAG, "Received pairing request from mac: "MACSTR, MAC2STR( mac ) );
             // Send pairing ack
             ESP_ERROR_CHECK( 
                 zenith_now_send_ack( mac, ZENITH_PACKET_PAIRING ) 
@@ -81,20 +68,19 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
                 zenith_now_send_ack( mac, ZENITH_PACKET_DATA ) 
             );
             ESP_LOGI( TAG, "Received data from reg_index %d mac: "MACSTR, reg_index, MAC2STR( mac ) );
-            ESP_LOGI( TAG, "number_of_datapoints: %d", packet->node_data.num_points );
-            for ( int i = 0; i < packet->node_data.num_points; ++i ) {
-                ESP_LOGI( TAG, "datapoint %d: type: %d value: %d", i, packet->node_data.datapoints[i].reading_type, packet->node_data.datapoints[i].value );
+            zenith_now_payload_data_t *data = (zenith_now_payload_data_t *)packet->payload;
+            ESP_LOGI( TAG, "number_of_datapoints: %d", data->num_points );
+            for ( int i = 0; i < data->num_points; ++i ) {
+                ESP_LOGI( TAG, "datapoint %d: type: %d value: %d", i, data->datapoints[i].reading_type, data->datapoints[i].value );
             }
-            // Ta innholdet fra packet->sensor_data.data_buffer og les inn i node_registry->nodes[0].datapoints
-            // Find the nodes datapoints
-            //zenith_datapoints_handle_t datapoints = NULL;
-            // add this data to node data.
-            //ESP_ERROR_CHECK(
-            //        zenith_datapoints_from_zenith_now( packet, &datapoints )
-            //);
-            //free(packet->node_data.datapoints);
+            
+            // Store data in registry
             break;
-    }
+        default:
+            ESP_LOGI( TAG, "default unhandled type %d from reg index %d mac: "MACSTR, packet->type, reg_index, MAC2STR( mac ) );
+            break;
+        }
+    // packet will be freed in the event handler that calls us
 }
 
 void app_main( void )

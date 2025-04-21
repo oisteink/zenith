@@ -1,0 +1,26 @@
+# zenith_now - esp now abstraction
+
+## purpose
+
+Handle all network connectivity. Currently only ESP-NOW is supported, but I know I might end up abstracting it and doing bt-le. also thread looks very interesting
+
+### Protocol
+
+```mermaid
+flowchart TD
+ subgraph Payload["Payload"]
+    direction TB
+        E["zenith_now_payload_ack_t"]
+        F["zenith_now_payload_pairing_t"]
+        G["zenith_now_payload_data_t"]
+  end
+ subgraph DataPayload["DataPayload"]
+    direction TB
+        H["zenith_node_datapoint_t"]
+  end
+    A["zenith_now_packet_t"] -- 1 byte --> B["type: zenith_now_packet_type_t"] & C["version: uint8_t"]
+    A -- Variable --> D["payload: uint8_t[]"]
+    D --> E & F & G
+    G -- Array --> H
+```
+dsfsdf
