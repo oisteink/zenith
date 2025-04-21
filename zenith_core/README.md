@@ -16,6 +16,57 @@ To be implemented:
 - Timer that loops through stored nodes when idle
 
 app main logic
+
+```mermaid
+sequenceDiagram
+    participant AppMain
+    participant NVS
+    participant Registry
+    participant UI
+    participant Blinker
+    participant ZenithNow
+    participant ZenithNode
+
+    AppMain->>NVS: Initialize NVS (initialize_nvs)
+    NVS-->>AppMain: ESP_OK
+
+    AppMain->>Registry: Create and initialize registry
+    Registry-->>AppMain: ESP_OK
+
+    AppMain->>UI: Configure and initialize UI
+    UI-->>AppMain: ESP_OK
+
+    AppMain->>Blinker: Initialize blinker (init_zenith_blink)
+    Blinker-->>AppMain: ESP_OK
+
+    AppMain->>ZenithNow: Configure Zenith Now (configure_zenith_now)
+    ZenithNow-->>AppMain: ESP_OK
+
+    AppMain->>ZenithNow: Set RX callback (core_rx_callback)
+
+    ZenithNode->>ZenithNow: Send packet (pairing or data)
+    ZenithNow->>AppMain: Trigger RX callback (core_rx_callback)
+
+    AppMain->>Registry: Check if peer is in registry
+    Registry-->>AppMain: Peer not found (reg_index < 0)
+
+    AppMain->>Registry: Add peer to registry
+    Registry-->>AppMain: ESP_OK
+
+    AppMain->>ZenithNow: Send ACK for pairing or data
+    ZenithNow-->>ZenithNode: ACK sent
+
+    AppMain->>Blinker: Blink for pairing or data received
+    Blinker-->>AppMain: Blink complete
+
+    AppMain->>Registry: Store received data in registry
+    Registry-->>AppMain: Data stored
+
+    loop Staying Alive
+        AppMain->>AppMain: vTaskDelay(portMAX_DELAY)
+    end
+```
+
 ```mermaid
 flowchart TD
     A["app_main()"] --> B["Initialize the peer list"]

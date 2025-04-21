@@ -11,20 +11,12 @@
 
 /* espnow data */
 
-/* typedef enum zenith_now_packet_type_e {
-    ZENITH_PACKET_PAIRING = 1, // Pairing Request
-    ZENITH_PACKET_DATA,        // Sensor data
-    ZENITH_PACKET_ACK,          // Acknowledgment for other packet types
-    ZENITH_PACKET_MAX
-} zenith_now_packet_type_t; */
-
-
 typedef uint8_t zenith_now_packet_type_t;
 enum {
-    ZENITH_PACKET_PAIRING = 1,
-    ZENITH_PACKET_DATA,
-    ZENITH_PACKET_ACK,
-    ZENITH_PACKET_MAX
+    ZENITH_PACKET_PAIRING = 1,  // Pairing Request
+    ZENITH_PACKET_DATA,         // Node data
+    ZENITH_PACKET_ACK,          // Acknowledgment for other packet types
+    ZENITH_PACKET_MAX           // Yes - for max to exist it has to be above all others. Therefore all usage shall be restricted to under max.
 };
 
 
