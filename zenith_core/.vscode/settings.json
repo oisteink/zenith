@@ -26,7 +26,8 @@
     "zenith_now.h": "c",
     "esp_check.h": "c",
     "random": "c",
-    "zenith_datapoints.h": "c"
+    "zenith_datapoints.h": "c",
+    "zenith_sensor_bmp280.h": "c"
   },
   "idf.espIdfPathWin": "D:/Espressif/frameworks/esp-idf/",
   "idf.toolsPathWin": "D:\\Espressif",

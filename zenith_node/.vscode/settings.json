@@ -30,7 +30,10 @@
     "array": "c",
     "string": "c",
     "string_view": "c",
-    "span": "c"
+    "span": "c",
+    "zenith_data.h": "c",
+    "zenith_now.h": "c",
+    "esp_now.h": "c"
   },
   "idf.portWin": "COM10",
   "idf.flashType": "UART"

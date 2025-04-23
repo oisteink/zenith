@@ -26,6 +26,9 @@ enum {
     ZENITH_PACKET_MAX           // Yes - for max to exist it has to be above all others. Therefore all usage shall be restricted to under max.
 };
 
+/// @brief Zenith Now data packet payload is just a zenith_datapoints_t in disguise.
+typedef struct zenith_datapoints_s zenith_now_payload_data_t;
+
 /// @brief Zenith Now ack packet payload.
 typedef struct __attribute__((packed)) zenith_now_payload_ack_s {
     zenith_now_packet_type_t ack_for_type;
@@ -35,25 +38,6 @@ typedef struct __attribute__((packed)) zenith_now_payload_ack_s {
 typedef struct __attribute__((packed)) zenith_now_payload_pairing_s {
     uint8_t flags; //  unused - could be stuff like supported zenith now version etc. node firmware version etc.
 } zenith_now_payload_pairing_t;
-
-/// @todo: this should probably be defined somewhere else - this is the same type that sensors should use to report.
-/// @brief Zenith Now node datapoint.
-/// @details This structure is used to represent a single data point from a node. It contains the value of the reading and the type of the reading.
-typedef struct __attribute__((packed)) zenith_node_datapoint_s {
-    /// @brief The type of the datapoint.
-    /// @details This is a 1-byte value that indicates the type of datapoint.
-    uint8_t reading_type;
-    /// @brief The value of the datapoint.
-    /// @details This is a 2-byte value that represents the actual datapoint.
-    uint16_t value;      
-} zenith_node_datapoint_t; // zenith_now_data_dataptoint_t?
-
-/// @brief Zenith Now data packet payload.
-/// @details This structure is used to represent a data packet that contains multiple datapoints. The number of datapoints is specified in the num_points field.
-typedef struct __attribute__((packed)) zenith_now_payload_data_s {
-    uint8_t num_points;
-    zenith_node_datapoint_t datapoints[];
-} zenith_now_payload_data_t;
 
 /// @brief Zenith Now packet header.
 /// @details This structure is used to represent the header of a Zenith Now packet. It contains the type and version of the packet.
@@ -131,12 +115,11 @@ typedef struct zenith_now_s {
 } zenith_now_t;
 
 
-typedef struct zenith_now_s *zenith_now_handle_t;
-
 esp_err_t zenith_now_init( const zenith_now_config_t *config );  // Initialize everything!
 esp_err_t zenith_now_teardown( void) ;                            // Frees shit and stops wifi
 
 // Sending packets
+esp_err_t zenith_now_new_packet( zenith_now_packet_type_t packet_type , uint8_t num_datapoints, zenith_now_packet_handle_t *out_packet );
 esp_err_t zenith_now_send_ack( const uint8_t *peer_mac, zenith_now_packet_type_t ack_type );
 esp_err_t zenith_now_send_pairing( const uint8_t *peer_mac );
 esp_err_t zenith_now_send_data( const uint8_t *peer_mac, const zenith_now_payload_data_t *data_payload );
@@ -151,7 +134,3 @@ bool zenith_now_is_peer_known( const uint8_t *peer_id );
 
 // ACK waiting helper
 esp_err_t zenith_now_wait_for_ack( zenith_now_packet_type_t packet_type, uint32_t wait_ms );
-
-
-
-

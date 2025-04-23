@@ -1,3 +1,6 @@
+// zenith_node.c
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+
 #include <stdio.h>
 #include <string.h>
 #include "esp_log.h"
@@ -14,7 +17,7 @@
 #include "zenith_blink.h"
 
 #include "zenith_node.h"
-#include "zenith_datapoints.h"
+#include "zenith_data.h"
 
 #include "zenith_sensor_aht30.h"
 #include "zenith_sensor_bmp280.h"
@@ -117,26 +120,21 @@ esp_err_t init_sensor( zenith_sensor_handle_t *sensor, i2c_master_bus_handle_t i
 
 /// @brief Reads the sensor and sends the data to the paired_core
 /// @return Allways returns ESP_OK
-void send_data( zenith_sensor_handle_t sensor ){
+void send_data( zenith_sensor_handle_t sensor ) {
     
     // Initialize data packet
-     zenith_now_packet_t * data_packet = NULL;
 
-    zenith_datapoints_t sensor_data = { 0 };
+    zenith_datapoints_t *sensor_data = NULL;
+
     ESP_ERROR_CHECK( 
         zenith_sensor_read_data( sensor, &sensor_data )
     );
     
-    ESP_LOGI( TAG, "%d sensor data read", sensor_data.number_of_datapoints );
+    ESP_LOGI( TAG, "%d sensor data read", sensor_data->num_datapoints );
 
     // check this one!!
-    zenith_datapoints_to_zenith_now( &sensor_data, &data_packet );
-    data_packet->header.version = ZENITH_NOW_VERSION;
-    zenith_now_payload_data_t *data = (zenith_now_payload_data_t *) data_packet->payload;
-    ESP_LOGI( TAG, "%d sensor data converted to zenith now packet", data->num_points );
-    for ( int i = 0; i < data->num_points; i++ ) {
-        ESP_LOGI( TAG, "Sensor %d dat: %d | %d", i, data->datapoints[i].value, data->datapoints[i].reading_type );
-    }
+    //zenith_datapoints_to_zenith_now( &sensor_data, &data );
+
     // Healing: Ensure peer is in our list of peers
     ESP_ERROR_CHECK( 
         zenith_now_add_peer( paired_core ) 
@@ -144,7 +142,7 @@ void send_data( zenith_sensor_handle_t sensor ){
 
     // Send data
     ESP_ERROR_CHECK( 
-        zenith_now_send_packet( paired_core, data_packet ) 
+        zenith_now_send_data( paired_core, sensor_data ) 
     ); 
     // If we don't get ack, increase number of failed sends
     failed_sends = ( zenith_now_wait_for_ack( ZENITH_PACKET_DATA, 2000 ) == ESP_OK ) ? 0 : failed_sends + 1; 

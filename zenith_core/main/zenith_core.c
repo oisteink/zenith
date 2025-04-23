@@ -82,8 +82,8 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
             );
             ESP_LOGI( TAG, "Received data from reg_index %d mac: "MACSTR, reg_index, MAC2STR( mac ) );
             zenith_now_payload_data_t *data = (zenith_now_payload_data_t *)packet->payload;
-            ESP_LOGI( TAG, "number_of_datapoints: %d", data->num_points );
-            for ( int i = 0; i < data->num_points; ++i ) {
+            ESP_LOGI( TAG, "number_of_datapoints: %d", data->num_datapoints );
+            for ( int i = 0; i < data->num_datapoints; ++i ) {
                 ESP_LOGI( TAG, "datapoint %d: type: %d value: %d", i, data->datapoints[i].reading_type, data->datapoints[i].value );
             }
             

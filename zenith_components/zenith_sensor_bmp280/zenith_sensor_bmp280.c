@@ -1,3 +1,6 @@
+// zenith_sensor_bmp280.c
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+
 #include <stdio.h>
 #include "esp_err.h"
 #include "esp_check.h"
@@ -9,13 +12,13 @@
 static const char *TAG = "zenith_sensor_bmp280";
 static int64_t t_fine;
 
-esp_err_t _read_temperature(zenith_sensor_t *sensor, float *out_temp) {
+esp_err_t _read_temperature(zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_temp) {
     // to be implemented
     *out_temp = 25.0;
     return ESP_OK;
 }
 
-esp_err_t _read_pressure(zenith_sensor_t *sensor, float *out_pressure) {
+esp_err_t _read_pressure(zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_pressure) {
     // to be implemented
     _read_temperature( sensor, out_pressure );
     *out_pressure = 1000.1;
@@ -31,7 +34,7 @@ esp_err_t _read_register( zenith_sensor_bmp280_t *bmp280, uint8_t reg, uint8_t *
     );
 
     ESP_RETURN_ON_ERROR(
-        i2c_master_transmit_receive( bmp280->dev_handle, &reg, 1, data, datasize, -1 ),
+        i2c_master_transmit_receive( bmp280->dev_handle, &reg, 1, data, datasize, portMAX_DELAY ),
         TAG, "Error reading BMP280 register 0x%x", reg
     );
     return ret;
@@ -63,6 +66,8 @@ esp_err_t _initialize( zenith_sensor_t *sensor ) {
         TAG, "Error initializing sensor"
     );
 
+    bmp280->base.number_of_sensors = 2;
+    ESP_LOGI( TAG, "bmp280 Sensor initialized" );
     return ret;
 }
 
@@ -84,7 +89,7 @@ esp_err_t zenith_sensor_new_bmp280( i2c_master_bus_handle_t i2c_bus, zenith_sens
 
     bmp280->bus_handle = i2c_bus;
     bmp280->bmp280_ctrl_meas = bmp280->config.control_measure;
-    bmp280->bmp280_config = bmp280->bmp280_config;
+    bmp280->bmp280_config = bmp280->bmp280_config; //??
     memcpy( &bmp280->config, config, sizeof( zenith_sensor_bmp280_config_t ) );
 
     i2c_device_config_t device_config = {

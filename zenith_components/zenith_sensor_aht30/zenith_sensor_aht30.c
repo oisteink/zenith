@@ -37,7 +37,7 @@ esp_err_t _read_signal( zenith_sensor_aht30_t *aht30, uint8_t *data) {
     return ESP_OK;
 }
 
-esp_err_t _read_temperature( zenith_sensor_t *sensor, float *out_temp )
+esp_err_t _read_temperature( zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_temp )
 {
     zenith_sensor_aht30_t *aht30 = __containerof(sensor, zenith_sensor_aht30_t, base);
 
@@ -54,7 +54,7 @@ esp_err_t _read_temperature( zenith_sensor_t *sensor, float *out_temp )
     return ESP_OK;
 }
 
-esp_err_t _read_humidity( zenith_sensor_t *sensor, float *out_humidity )
+esp_err_t _read_humidity( zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_humidity )
 {
     zenith_sensor_aht30_t *aht30 = __containerof(sensor, zenith_sensor_aht30_t, base);
 

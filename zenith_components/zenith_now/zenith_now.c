@@ -1,4 +1,6 @@
 // zenith_now.c
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+
 #include <stdio.h>
 #include <string.h>
 #include "esp_log.h"
@@ -11,8 +13,9 @@
 #include "nvs_flash.h"
 #include "esp_check.h"
 
-#include "zenith_now.h"
 #include "zenith_private.h"
+#include "zenith_data.h"
+#include "zenith_now.h"
 
 //QueueHandle_t zenith_now_event_queue = NULL;
 //EventGroupHandle_t zenith_now_event_group = NULL;
@@ -98,8 +101,9 @@ int get_payload_size( const zenith_now_packet_t *data_packet ) {
             break;
         case ZENITH_PACKET_DATA:
             ESP_LOGD( TAG, "Data packet" );
+            
             zenith_now_payload_data_t *data_payload = ( zenith_now_payload_data_t * ) data_packet->payload;
-            payload_size = sizeof( zenith_now_payload_data_t ) + sizeof(zenith_node_datapoint_t) * data_payload->num_points;
+            payload_size = sizeof( zenith_now_payload_data_t ) + sizeof(zenith_datapoint_t) * data_payload->num_datapoints;
             break;
         case ZENITH_PACKET_ACK:
             ESP_LOGD( TAG, "Ack packet" );
@@ -184,12 +188,17 @@ esp_err_t zenith_now_wait_for_ack( zenith_now_packet_type_t packet_type, uint32_
 /// @brief Sends a zenith_now packet over esp-now
 /// @param peer_mac Peer to send to
 /// @param data_payload the payload for the data packet
-/// @return 
+/// @return ESP_OK, or underlying error value
 esp_err_t zenith_now_send_data( const uint8_t *peer_mac, const zenith_now_payload_data_t *data_payload ) {
     esp_err_t ret = ESP_OK;
     ESP_LOGI(TAG, "zenith_now_send_data()");
+    ESP_RETURN_ON_FALSE(
+        data_payload,
+        ESP_ERR_INVALID_ARG,
+        TAG, "data_payload is NULL"
+    );
 
-    size_t payload_size = sizeof( zenith_now_payload_data_t ) + sizeof( zenith_node_datapoint_t ) * data_payload->num_points;
+    size_t payload_size = sizeof( zenith_now_payload_data_t ) + sizeof( zenith_datapoint_t ) * data_payload->num_datapoints;
     size_t packet_size = sizeof( zenith_now_packet_t ) + payload_size;
     ESP_LOGI( TAG, "Createing packet\tsize: %d type: %d", packet_size, ZENITH_PACKET_DATA );
 
@@ -277,6 +286,49 @@ esp_err_t zenith_now_send_pairing( const uint8_t *peer_mac ) {
     return ret;
 }
 
+
+esp_err_t zenith_now_new_packet( zenith_now_packet_type_t packet_type , uint8_t num_datapoints, zenith_now_packet_handle_t *out_packet ) {
+    ESP_LOGD( TAG, "zenith_now_new_packet()" );
+    esp_err_t ret = ESP_OK;
+
+    size_t payload_size = 0;
+    switch ( packet_type ) {
+        case ZENITH_PACKET_PAIRING:
+            ESP_LOGD( TAG, "Pairing packet" );
+            payload_size = sizeof( zenith_now_payload_pairing_t );
+            break;
+        case ZENITH_PACKET_DATA:
+            ESP_LOGD( TAG, "Data packet" );
+            payload_size = sizeof( zenith_now_payload_data_t ) + sizeof( zenith_datapoint_t ) * num_datapoints;
+            break;
+        case ZENITH_PACKET_ACK:
+            ESP_LOGD( TAG, "Ack packet" );
+            payload_size = sizeof( zenith_now_payload_ack_t );
+            break;
+        default:
+            ESP_RETURN_ON_ERROR(
+                ESP_ERR_INVALID_ARG,
+                TAG, "Unimplemented packet type"
+            );
+            break;
+    }
+
+    size_t packet_size = sizeof( zenith_now_packet_t ) + payload_size;
+
+    zenith_now_packet_t *packet = calloc( 1, packet_size );
+    ESP_RETURN_ON_FALSE(
+        packet,
+        ESP_ERR_NO_MEM,
+        TAG, "Error allocating memory for packet"
+    );
+    packet->header.type = packet_type;
+    packet->header.payload_size = payload_size;
+    packet->header.version = ZENITH_NOW_VERSION;
+
+    *out_packet = packet;
+
+    return ret;
+}
 /// @brief Sends zenith_now packets over esp-now, and heals the esp-now peer list
 /// @param peer_addr mac address we want to send to
 /// @param data_packet the zenith_now packet we want to send
