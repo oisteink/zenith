@@ -12,15 +12,15 @@
 static const char *TAG = "zenith_sensor_bmp280";
 static int64_t t_fine;
 
-esp_err_t _read_temperature(zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_temp) {
+esp_err_t zenith_sensor_bmp280_read_temperature(zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_temp) {
     // to be implemented
     *out_temp = 25.0;
     return ESP_OK;
 }
 
-esp_err_t _read_pressure(zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_pressure) {
+esp_err_t zenith_sensor_bmp280_read_pressure(zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_pressure) {
     // to be implemented
-    _read_temperature( sensor, out_pressure );
+    zenith_sensor_bmp280_read_temperature( sensor, out_pressure );
     *out_pressure = 1000.1;
     return ESP_OK;
 }
@@ -51,7 +51,7 @@ esp_err_t _read_calibration_data( zenith_sensor_bmp280_t *bmp280 ) {
     return ret;
 }
 
-esp_err_t _initialize( zenith_sensor_t *sensor ) {
+esp_err_t zenith_sensor_bmp280_initialize( zenith_sensor_t *sensor ) {
     esp_err_t ret = ESP_OK;
     
     zenith_sensor_bmp280_t *bmp280 = __containerof( sensor, zenith_sensor_bmp280_t, base );
@@ -103,9 +103,9 @@ esp_err_t zenith_sensor_new_bmp280( i2c_master_bus_handle_t i2c_bus, zenith_sens
         TAG, "Error adding i2c device to bus"
     );
 
-    bmp280->base.initialize = _initialize;
-    bmp280->base.read_temperature = _read_temperature;
-    bmp280->base.read_pressure = _read_pressure;
+    bmp280->base.initialize = zenith_sensor_bmp280_initialize;
+    bmp280->base.read_temperature = zenith_sensor_bmp280_read_temperature;
+    bmp280->base.read_pressure = zenith_sensor_bmp280_read_pressure;
 
     *handle = &( bmp280->base );
     return ESP_OK;

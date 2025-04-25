@@ -27,7 +27,12 @@
     "esp_check.h": "c",
     "random": "c",
     "zenith_datapoints.h": "c",
-    "zenith_sensor_bmp280.h": "c"
+    "zenith_sensor_bmp280.h": "c",
+    "esp_log.h": "c",
+    "zenith_private.h": "c",
+    "zenith_data.h": "c",
+    "bitset": "c",
+    "format": "c"
   },
   "idf.espIdfPathWin": "D:/Espressif/frameworks/esp-idf/",
   "idf.toolsPathWin": "D:\\Espressif",

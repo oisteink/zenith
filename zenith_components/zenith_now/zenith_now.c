@@ -1,5 +1,4 @@
 // zenith_now.c
-#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 
 #include <stdio.h>
 #include <string.h>
@@ -17,6 +16,8 @@
 #include "zenith_data.h"
 #include "zenith_now.h"
 
+
+
 //QueueHandle_t zenith_now_event_queue = NULL;
 //EventGroupHandle_t zenith_now_event_group = NULL;
 static const char *TAG = "zenith-now";
@@ -27,8 +28,6 @@ static zenith_now_t zenith_now_instance = {
     .event_group = NULL,
     .task_handle = NULL,
 };
-//static zenith_now_receive_callback_t user_rx_cb = NULL;
-//static zenith_now_send_callback_t user_tx_cb = NULL;
 
 /// @brief Initializes WiFi with parameters needed for Zenith Now
 /// @return ESP_OK on success
@@ -191,7 +190,7 @@ esp_err_t zenith_now_wait_for_ack( zenith_now_packet_type_t packet_type, uint32_
 /// @return ESP_OK, or underlying error value
 esp_err_t zenith_now_send_data( const uint8_t *peer_mac, const zenith_now_payload_data_t *data_payload ) {
     esp_err_t ret = ESP_OK;
-    ESP_LOGI(TAG, "zenith_now_send_data()");
+    ESP_LOGD(TAG, "zenith_now_send_data()");
     ESP_RETURN_ON_FALSE(
         data_payload,
         ESP_ERR_INVALID_ARG,
@@ -200,7 +199,7 @@ esp_err_t zenith_now_send_data( const uint8_t *peer_mac, const zenith_now_payloa
 
     size_t payload_size = sizeof( zenith_now_payload_data_t ) + sizeof( zenith_datapoint_t ) * data_payload->num_datapoints;
     size_t packet_size = sizeof( zenith_now_packet_t ) + payload_size;
-    ESP_LOGI( TAG, "Createing packet\tsize: %d type: %d", packet_size, ZENITH_PACKET_DATA );
+    ESP_LOGD( TAG, "Createing packet\tsize: %d type: %d", packet_size, ZENITH_PACKET_DATA );
 
     zenith_now_packet_t *data_packet = calloc( 1, packet_size);
     ESP_RETURN_ON_FALSE(
@@ -215,8 +214,8 @@ esp_err_t zenith_now_send_data( const uint8_t *peer_mac, const zenith_now_payloa
 
     memcpy( data_packet->payload, data_payload, payload_size );
 
-    ESP_LOGI(TAG, "sending this packet:");
-    ESP_LOG_BUFFER_HEX_LEVEL( TAG, ( uint8_t * ) data_packet, packet_size, ESP_LOG_INFO );
+    ESP_LOGD(TAG, "sending this packet:");
+    ESP_LOG_BUFFER_HEX_LEVEL( TAG, ( uint8_t * ) data_packet, packet_size, ESP_LOG_DEBUG );
     ret = zenith_now_send_packet( peer_mac, data_packet );
 
     free( data_packet );
@@ -229,11 +228,11 @@ esp_err_t zenith_now_send_data( const uint8_t *peer_mac, const zenith_now_payloa
 /// @return ESP_OK
 esp_err_t zenith_now_send_ack( const uint8_t *peer_mac, zenith_now_packet_type_t ack_type ) {
     esp_err_t ret = ESP_OK;
-    ESP_LOGI(TAG, "zenith_now_send_ack()");
+    ESP_LOGD(TAG, "zenith_now_send_ack()");
 
     size_t payload_size = sizeof( zenith_now_payload_ack_t );
     size_t packet_size = sizeof( zenith_now_packet_t ) + payload_size;
-    ESP_LOGI( TAG, "Createing packet\tsize: %d type: %d", packet_size, ack_type );
+    ESP_LOGD( TAG, "Createing packet\tsize: %d type: %d", packet_size, ack_type );
 
     zenith_now_packet_t *ack = calloc( 1, packet_size);
     ESP_RETURN_ON_FALSE(
@@ -248,8 +247,8 @@ esp_err_t zenith_now_send_ack( const uint8_t *peer_mac, zenith_now_packet_type_t
 
     (( zenith_now_payload_ack_t * ) ack->payload)->ack_for_type = ack_type;
 
-    ESP_LOGI(TAG, "sending this packet to ack:");
-    ESP_LOG_BUFFER_HEX_LEVEL( TAG, ( uint8_t * ) ack, packet_size, ESP_LOG_INFO );
+    ESP_LOGD(TAG, "sending this packet to ack:");
+    ESP_LOG_BUFFER_HEX_LEVEL( TAG, ( uint8_t * ) ack, packet_size, ESP_LOG_DEBUG );
     ret = zenith_now_send_packet( peer_mac, ack);
 
     free(ack);
@@ -259,11 +258,11 @@ esp_err_t zenith_now_send_ack( const uint8_t *peer_mac, zenith_now_packet_type_t
 /// @brief Currently you can only pair with Zenith Core. This is typically used by the Zenith Node when it needs to pair.
 esp_err_t zenith_now_send_pairing( const uint8_t *peer_mac ) {
     esp_err_t ret = ESP_OK;
-    ESP_LOGI(TAG, "zenith_now_send_pairing()");
+    ESP_LOGD(TAG, "zenith_now_send_pairing()");
 
     size_t payload_size = sizeof( zenith_now_payload_pairing_t );
     size_t packet_size = sizeof( zenith_now_packet_t ) + payload_size;
-    ESP_LOGI( TAG, "Createing packet\tsize: %d type: %d", packet_size, ZENITH_PACKET_PAIRING );
+    ESP_LOGD( TAG, "Createing packet\tsize: %d type: %d", packet_size, ZENITH_PACKET_PAIRING );
 
     zenith_now_packet_t *pairing = calloc( 1, packet_size);
     ESP_RETURN_ON_FALSE(
@@ -278,8 +277,8 @@ esp_err_t zenith_now_send_pairing( const uint8_t *peer_mac ) {
 
     (( zenith_now_payload_pairing_t * ) pairing->payload)->flags = 0;
 
-    ESP_LOGI(TAG, "sending this packet to pair: "MACSTR, MAC2STR(peer_mac));
-    ESP_LOG_BUFFER_HEX_LEVEL( TAG, ( uint8_t * ) pairing, packet_size, ESP_LOG_INFO );
+    ESP_LOGD(TAG, "sending this packet to pair: "MACSTR, MAC2STR(peer_mac));
+    ESP_LOG_BUFFER_HEX_LEVEL( TAG, ( uint8_t * ) pairing, packet_size, ESP_LOG_DEBUG );
     ret = zenith_now_send_packet( peer_mac, pairing);
 
     free(pairing);
@@ -386,8 +385,8 @@ static void zenith_now_espnow_recv_cb( const esp_now_recv_info_t *recv_info, con
     // Copy the the packet   
     memcpy( packet, data, len );
 
-    ESP_LOGI( TAG, "Received packet type: %d from: "MACSTR, packet->header.type, MAC2STR( recv_info->src_addr ) );
-    ESP_LOG_BUFFER_HEX_LEVEL( TAG, ( uint8_t * ) data, len, ESP_LOG_INFO );
+    ESP_LOGD( TAG, "Received packet type: %d from: "MACSTR, packet->header.type, MAC2STR( recv_info->src_addr ) );
+    ESP_LOG_BUFFER_HEX_LEVEL( TAG, ( uint8_t * ) data, len, ESP_LOG_DEBUG );
 
     zenith_now_event_t event = {
         .type = RECEIVE_EVENT, 
@@ -505,7 +504,7 @@ esp_err_t zenith_now_init( const zenith_now_config_t *config ) {
     );  
 
     // Create event handler - How do I keep up communictaion? I guess the caller should do it, but perhaps the zenith_now could handle data in and out itself by modifying the registry on data receipt?
-    ret = xTaskCreate( zenith_now_event_handler, "zn_events", 4096, NULL, tskIDLE_PRIORITY, &zenith_now_instance.task_handle ) == pdPASS ? ESP_OK : ESP_FAIL; // 2k stack - er det nok? nei, men kankje fire er.
+    ret = xTaskCreate( zenith_now_event_handler, "zn_events", 4096, &zenith_now_instance, tskIDLE_PRIORITY, &zenith_now_instance.task_handle ) == pdPASS ? ESP_OK : ESP_FAIL; // 2k stack - er det nok? nei, men kankje fire er.
     ESP_RETURN_ON_ERROR(
         ret,
         TAG, "Error creating zenith_now_event_handler task"

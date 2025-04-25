@@ -36,37 +36,38 @@ esp_err_t zenith_sensor_read_data( zenith_sensor_handle_t sensor, zenith_datapoi
         ESP_ERR_NO_MEM,
         TAG, "Failed to allocate memory for datapoints"
     );
-   
+
+    uint8_t current_datapoint = 0;
     if ( sensor->read_humidity )
     {
-        data->datapoints[data->num_datapoints].reading_type = ZENITH_DATAPOINT_HUMIDITY;
+        data->datapoints[current_datapoint].reading_type = ZENITH_DATAPOINT_HUMIDITY;
         zenith_sensor_datatype_t humidity;
         ret = sensor->read_humidity( sensor, &humidity );
         if ( ret == ESP_OK ) {
-            data->datapoints[data->num_datapoints].value = humidity;
-            data->num_datapoints++;
+            data->datapoints[current_datapoint].value = humidity;
+            current_datapoint++;
         }
     }
     
     if ( sensor->read_pressure )
     {
-        data->datapoints[data->num_datapoints].reading_type = ZENITH_DATAPOINT_PRESSURE;
+        data->datapoints[current_datapoint].reading_type = ZENITH_DATAPOINT_PRESSURE;
         zenith_sensor_datatype_t pressure;
         ret = sensor->read_pressure( sensor, &pressure );
         if ( ret == ESP_OK ) {
-            data->datapoints[data->num_datapoints].value = pressure;
-            data->num_datapoints++;
+            data->datapoints[current_datapoint].value = pressure;
+            current_datapoint++;
         }
     }
 
     if ( sensor->read_temperature )
     {
-        data->datapoints[data->num_datapoints].reading_type = ZENITH_DATAPOINT_TEMPERATURE;
+        data->datapoints[current_datapoint].reading_type = ZENITH_DATAPOINT_TEMPERATURE;
         zenith_sensor_datatype_t temperature;
         ret = sensor->read_temperature( sensor, &temperature );
         if ( ret == ESP_OK ) {
-            data->datapoints[data->num_datapoints].value = temperature;
-            data->num_datapoints++;
+            data->datapoints[current_datapoint].value = temperature;
+            current_datapoint++;
         }
     }
 

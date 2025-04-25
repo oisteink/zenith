@@ -35,6 +35,6 @@
     "zenith_now.h": "c",
     "esp_now.h": "c"
   },
-  "idf.portWin": "COM10",
+  "idf.portWin": "COM3",
   "idf.flashType": "UART"
 }

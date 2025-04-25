@@ -50,22 +50,13 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
         TAG, "Version mismatch: %d != %d", packet->header.version, ZENITH_NOW_VERSION
     );
 
-    // Add peer to registry if new
     int8_t reg_index = zenith_registry_index_of_mac( node_registry, mac );
-    if ( reg_index < 0 ) {
-        zenith_node_t node;
-        memcpy( &node.mac, mac, ESP_NOW_ETH_ALEN );
-        ESP_ERROR_CHECK( 
-            zenith_registry_add( node_registry, node ) 
-        );
-        reg_index = zenith_registry_index_of_mac( node_registry, mac );
-    }
-
 
     switch ( packet->header.type )
     {
         case ZENITH_PACKET_PAIRING:
             ESP_LOGI( TAG, "Received pairing request from mac: "MACSTR, MAC2STR( mac ) );
+            // Check if any flags or versions or whatnot that are set in the pairing payload and if all is ok:
             // Send pairing ack
             ESP_ERROR_CHECK( 
                 zenith_now_send_ack( mac, ZENITH_PACKET_PAIRING ) 
@@ -78,16 +69,23 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
         case ZENITH_PACKET_DATA:
             zenith_blink( BLINK_DATA_RECEIVE );
             ESP_ERROR_CHECK( 
-                zenith_now_send_ack( mac, ZENITH_PACKET_DATA ) 
+                zenith_now_send_ack( mac, packet->header.type ) 
             );
-            ESP_LOGI( TAG, "Received data from reg_index %d mac: "MACSTR, reg_index, MAC2STR( mac ) );
+
             zenith_now_payload_data_t *data = (zenith_now_payload_data_t *)packet->payload;
-            ESP_LOGI( TAG, "number_of_datapoints: %d", data->num_datapoints );
+
+            zenith_node_handle_t node = NULL;
+            zenith_registry_retrieve_node_by_mac( node_registry, mac, &node );
+            if ( node->data.datapoints_handle )
+                free( node->data.datapoints_handle );
+
+            node->data.datapoints_handle = data;
+            ESP_LOGI( TAG, "Received data from reg_index %d mac: "MACSTR, reg_index, MAC2STR( mac ) );
+            ESP_LOGI( TAG, "number_of_datapoints: %d", data->num_datapoints );          
             for ( int i = 0; i < data->num_datapoints; ++i ) {
-                ESP_LOGI( TAG, "datapoint %d: type: %d value: %d", i, data->datapoints[i].reading_type, data->datapoints[i].value );
+                ESP_LOGI( TAG, "datapoint %d: type: %d value: %.2f", i, data->datapoints[i].reading_type, data->datapoints[i].value );
             }
             
-            // Store data in registry
             break;
         default:
             ESP_LOGI( TAG, "default unhandled type %d from reg index %d mac: "MACSTR, packet->header.type, reg_index, MAC2STR( mac ) );
@@ -102,9 +100,7 @@ void app_main( void )
     // Initialize default NVS partition
     ESP_ERROR_CHECK( initialize_nvs() );
     ESP_ERROR_CHECK( zenith_registry_create( &node_registry ) );
-    ESP_ERROR_CHECK( zenith_registry_init( node_registry ) );
-    uint8_t count;
-    zenith_registry_count (node_registry, &count );
+    uint8_t count = zenith_registry_count( node_registry );
     ESP_LOGI(TAG, "Registry has %d values", count);
     // Initialize display and load UI
     zenith_ui_config_t ui_config = {
@@ -125,7 +121,7 @@ void app_main( void )
     };
     zenith_ui_handle_t core_ui_handle = NULL;
     ESP_ERROR_CHECK( zenith_ui_new_core( &ui_config, &core_ui_handle ) );
-    //ESP_ERROR_CHECK( zenith_ui_test( core_ui_handle ) );
+    ESP_ERROR_CHECK( zenith_ui_test( core_ui_handle ) );
     zenith_ui_core_fade_lcd_brightness(75, 1500);
 
     // Initialize blinker

@@ -10,7 +10,7 @@ typedef enum zenith_datapoints_datatype_e {
     _ZENITH_DATAPOINT_MAX
 } zenith_datapoints_datatype_t;
 
-typedef uint16_t zenith_sensor_datatype_t;
+typedef float zenith_sensor_datatype_t;
 
 /// @brief Zenith Now node datapoint.
 /// @details This structure is used to represent a single data point from a node. It contains the value of the reading and the type of the reading.

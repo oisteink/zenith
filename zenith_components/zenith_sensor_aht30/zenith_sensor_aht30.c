@@ -8,7 +8,7 @@
 
 static const char *TAG = "AHT30";
 
-esp_err_t _read_signal( zenith_sensor_aht30_t *aht30, uint8_t *data) {
+esp_err_t zenith_sensor_aht30_read_signal( zenith_sensor_aht30_t *aht30, uint8_t *data) {
     uint8_t command[] = {0xAC, 0x33, 0x00}; //   Wait 10ms to send the 0xAC command (trigger measurement). This command parameter has two bytes, the first byte is 0x33, and the second byte is 0x00.
     uint8_t tries = 0;
     do // Loop until ready: "If the status bit [Bit7] is 0, it means that the data can be read normaly. When it is 1, the sensor is busy, and the host needs to wait for the data processing to complete."
@@ -37,13 +37,13 @@ esp_err_t _read_signal( zenith_sensor_aht30_t *aht30, uint8_t *data) {
     return ESP_OK;
 }
 
-esp_err_t _read_temperature( zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_temp )
+esp_err_t zenith_sensor_aht30_read_temperature( zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_temp )
 {
     zenith_sensor_aht30_t *aht30 = __containerof(sensor, zenith_sensor_aht30_t, base);
 
     uint8_t data[6]; // 1 byte status, 5 bytes Humidity and Temperature signal
     ESP_RETURN_ON_ERROR(
-        _read_signal(aht30, data),
+        zenith_sensor_aht30_read_signal(aht30, data),
         TAG, "Failed to get signal from sensor"
     );
     // Temperatur signal is lower 20 bits
@@ -54,13 +54,13 @@ esp_err_t _read_temperature( zenith_sensor_t *sensor, zenith_sensor_datatype_t *
     return ESP_OK;
 }
 
-esp_err_t _read_humidity( zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_humidity )
+esp_err_t zenith_sensor_aht30_read_humidity( zenith_sensor_t *sensor, zenith_sensor_datatype_t *out_humidity )
 {
     zenith_sensor_aht30_t *aht30 = __containerof(sensor, zenith_sensor_aht30_t, base);
 
     uint8_t data[6]; // 1 byte status, 5 bytes Humidity and Temperature signal
     ESP_RETURN_ON_ERROR(
-        _read_signal(aht30, data),
+        zenith_sensor_aht30_read_signal(aht30, data),
         TAG, "Failed to get signal from sensor"
     );
     // Humidity signal is upper 20 bits
@@ -71,6 +71,27 @@ esp_err_t _read_humidity( zenith_sensor_t *sensor, zenith_sensor_datatype_t *out
     return ESP_OK;
 }
 
+
+esp_err_t zenith_sensor_aht30_initialize( zenith_sensor_t *sensor )
+{
+    esp_err_t ret = ESP_OK;
+    zenith_sensor_aht30_t *aht30 = __containerof(sensor, zenith_sensor_aht30_t, base);
+    ESP_RETURN_ON_FALSE(
+        aht30,
+        ESP_ERR_INVALID_ARG,
+        TAG, "Invalid sensor handle"
+    );
+
+/*     uint8_t command[] = {0xBE, 0x08}; // 0xBE is the command to start the sensor
+    ESP_RETURN_ON_ERROR(
+        i2c_master_transmit( aht30->dev_handle, command, sizeof( command ), AHT30_SENSOR_TIMEOUT ),
+        TAG, "Error sending command to sensor"
+    );
+ */
+    vTaskDelay( pdMS_TO_TICKS( 100 ) ); // Wait for the sensor to start up
+
+    return ret;
+}
 
 esp_err_t zenith_sensor_new_aht30( i2c_master_bus_handle_t i2c_bus, zenith_sensor_aht30_config_t *config, zenith_sensor_handle_t *handle)
 {
@@ -103,10 +124,10 @@ esp_err_t zenith_sensor_new_aht30( i2c_master_bus_handle_t i2c_bus, zenith_senso
         TAG, "Error adding i2c device to bus"
     );
 
-    vTaskDelay( pdMS_TO_TICKS( 100 ) ); // After power-on, wait for ≥100ms Before reading the temperature and humidity value
-    
-    aht30->base.read_humidity = _read_humidity;
-    aht30->base.read_temperature = _read_temperature;
+    aht30->base.number_of_sensors = 2; // Humidity and temperature
+    aht30->base.initialize = zenith_sensor_aht30_initialize;
+    aht30->base.read_humidity = zenith_sensor_aht30_read_humidity;
+    aht30->base.read_temperature = zenith_sensor_aht30_read_temperature;
 
     *handle = &(aht30->base);
     return ESP_OK;

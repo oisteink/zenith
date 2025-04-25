@@ -489,7 +489,7 @@ esp_err_t zenith_ui_new_core( const zenith_ui_config_t* config, zenith_ui_handle
 
 esp_err_t zenith_ui_test( zenith_ui_handle_t ui)
 {
-    lv_obj_t *scr = lv_scr_act();
+/*     lv_obj_t *scr = lv_scr_act();
     
     // Create list
     lv_obj_t *list = lv_list_create( scr );
@@ -498,16 +498,16 @@ esp_err_t zenith_ui_test( zenith_ui_handle_t ui)
     // Get registry data
     uint8_t count;
     zenith_registry_count( ui->node_registry, &count );
-    
+    ESP_LOGI( TAG, "Registry has %d values", count );
     // Populate list
     for(uint8_t i=0; i<count; i++) {
-        uint8_t mac[6];
-        zenith_registry_get_mac(ui->node_registry, i, mac);
+        zenith_node_handle_t node = NULL;
+        zenith_registry_retrieve(ui->node_registry, i, &node);
         
         char mac_str[18];
-        sprintf( mac_str, MACSTR, MAC2STR( mac ) );
+        sprintf( mac_str, MACSTR, MAC2STR( node->info.mac ) );
         
         lv_list_add_btn( list, NULL, mac_str );
-    }
+    } */
     return ESP_OK;
 }
