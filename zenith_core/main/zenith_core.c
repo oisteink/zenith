@@ -73,13 +73,10 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
             );
 
             zenith_now_payload_data_t *data = (zenith_now_payload_data_t *)packet->payload;
+            ESP_ERROR_CHECK( 
+                zenith_registry_set_node_data( node_registry, mac, data ) 
+            );
 
-            zenith_node_handle_t node = NULL;
-            zenith_registry_retrieve_node_by_mac( node_registry, mac, &node );
-            if ( node->data.datapoints_handle )
-                free( node->data.datapoints_handle );
-
-            node->data.datapoints_handle = data;
             ESP_LOGI( TAG, "Received data from reg_index %d mac: "MACSTR, reg_index, MAC2STR( mac ) );
             ESP_LOGI( TAG, "number_of_datapoints: %d", data->num_datapoints );          
             for ( int i = 0; i < data->num_datapoints; ++i ) {
@@ -91,7 +88,6 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
             ESP_LOGI( TAG, "default unhandled type %d from reg index %d mac: "MACSTR, packet->header.type, reg_index, MAC2STR( mac ) );
             break;
         }
-    // packet will be freed in the event handler that calls us
 }
 
 void app_main( void )

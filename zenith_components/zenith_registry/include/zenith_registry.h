@@ -7,7 +7,7 @@
 
 #define ZENITH_REGISTRY_MAX_NODES 10
 #define ZENITH_REGISTRY_MAX_NAME_LEN 10
-#define ZENITH_REGISTRY_VERSION ( uint8_t ) 1
+#define ZENITH_REGISTRY_VERSION ( uint8_t ) 2
 #define ZENITH_REGISTRY_NODE_KEY "paired_nodes"
 #define ZENITH_REGISTRY_NAMESPACE "ZenithR"
 
@@ -20,6 +20,7 @@ typedef struct __attribute__((packed)) zenith_node_info_s {
 //  fw version node is running?
 //  Other shit like options maybe. Like if some sensors are to be supressed/ignored.
 } zenith_node_info_t;
+typedef zenith_node_info_t* zenith_node_info_handle_t;
 
 typedef struct __attribute__((packed)) zenith_registry_nvs_header_s {
     uint8_t registry_version;
@@ -38,8 +39,8 @@ typedef struct zenith_node_data_s {
 typedef zenith_node_data_t* zenith_node_data_handle_t;
 
 typedef struct zenith_node_s {
-    zenith_node_info_t info;
-    zenith_node_data_t data;
+    zenith_node_info_handle_t info;
+    zenith_node_data_handle_t data;
 } zenith_node_t;
 typedef zenith_node_t* zenith_node_handle_t;
 
@@ -59,30 +60,17 @@ esp_err_t zenith_registry_create( zenith_registry_handle_t* handle );
 /// @return ESP_OK on success, otherwise error value
 esp_err_t zenith_registry_dispose( zenith_registry_handle_t handle );
 
-esp_err_t zenith_registry_set_node_data( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], const zenith_node_data_handle_t data );
-esp_err_t zenith_registry_get_node_data( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], zenith_node_data_handle_t *data );
-esp_err_t zenith_registry_set_node_info( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], const zenith_node_info_t *info );
-esp_err_t zenith_registry_get_node_info( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], zenith_node_info_t *info );
+/// @todo These should only be used internally!
+esp_err_t zenith_registry_get_node( zenith_registry_handle_t registry, const uint8_t mac[ESP_NOW_ETH_ALEN], zenith_node_handle_t *out_node );
+esp_err_t zenith_registry_get_node_by_index( zenith_registry_handle_t registry, const uint8_t index, zenith_node_handle_t *out_node );
 
-/// @brief Gets the data for a node from the registry by index. Creates a new node if it does not exist.
-/// @param handle zenith registry handle
-/// @param index index of the node to get data for
-/// @param data output zenith node data struct
-/// @return ESP_OK on success, otherwise error value
-esp_err_t zenith_registry_retrieve_node_by_index( zenith_registry_handle_t handle, const uint8_t index, zenith_node_handle_t *data );
+esp_err_t zenith_registry_create_node_data ( zenith_registry_handle_t registry, uint8_t number_of_datapoints, zenith_node_data_handle_t *out_data );
+esp_err_t zenith_registry_set_node_data( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], const zenith_datapoints_handle_t data );
+esp_err_t zenith_registry_get_node_data( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], zenith_datapoints_handle_t *data );
 
-/// @brief Gets the data for a node from the registry by MAC address. Creates a new node if it does not exist.
-/// @param handle zenith registry handle
-/// @param mac MAC address of the node to get data for
-/// @param data output zenith node data struct
-/// @return ESP_OK on success, otherwise error value 
-esp_err_t zenith_registry_retrieve_node( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], zenith_node_handle_t *data );
-
-/// @brief Removes a node from the registry
-/// @param handle  zenith registry handle
-/// @param index index of the node to remove
-/// @return ESP_OK on success, otherwise error value
-esp_err_t zenith_registry_forget_node( zenith_registry_handle_t handle, const uint8_t index );
+esp_err_t zenith_registry_create_node_info ( zenith_registry_handle_t registry, zenith_node_info_handle_t *out_info );
+esp_err_t zenith_registry_set_node_info( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], const zenith_node_info_handle_t info );
+esp_err_t zenith_registry_get_node_info( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], zenith_node_info_handle_t *info );
 
 /// @brief Returns the number of nodes in the registry
 /// @param handle zenith registry handle
