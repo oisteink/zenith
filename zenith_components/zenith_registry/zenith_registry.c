@@ -1,579 +1,437 @@
 // zenith_registry.c
-#include "zenith_registry.h"
-#include "esp_check.h"
-#include "esp_err.h"
+
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "nvs.h"
 #include "nvs_flash.h"
-#include "string.h"
-#include "esp_mac.h"
+#include "esp_check.h"
 #include "esp_log.h"
+#include "esp_err.h"
+#include "esp_mac.h"
+#include "time.h"
+#include "zenith_registry.h"
 
+#define ZENITH_REGISTRY_NVS_NAMESPACE "zenith_registry"
+#define ZENITH_REGISTRY_NVS_KEY "nodes"
+#define ZENITH_REGISTRY_VERSION 1
+#define ZENITH_REGISTRY_MAX_NODES 10
 
-static char *TAG = "zenith_registry";
+struct zenith_registry_s {
+    zenith_node_info_t nodes[ZENITH_REGISTRY_MAX_NODES];
+    uint8_t node_count;
+    zenith_node_runtime_t *runtime_buffers; // where we store the live sensor data
+    uint8_t buffer_count; // number of buffers allocated
+    zenith_registry_callback_t callback;
+};
 
+const char *TAG = "zenith_registry";
 
-esp_err_t _load_from_nvs( zenith_registry_handle_t handle ) 
-{
-    esp_err_t ret = ESP_OK;
+// ringbuffer support
 
-    ESP_RETURN_ON_FALSE(
-        handle,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Invalid handle"
-    );
-
-    nvs_handle_t nvs_handle;
-    zenith_registry_nvs_blob_t *blob = NULL;
-    if ( nvs_open( ZENITH_REGISTRY_NAMESPACE, NVS_READWRITE, &nvs_handle ) == ESP_OK)  
-    {
-        size_t blob_size;
-        // Get the blob size
-        if ( nvs_get_blob( nvs_handle, ZENITH_REGISTRY_NODE_KEY, NULL, &blob_size ) == ESP_OK ) 
-        {
-            blob = calloc( 1, blob_size );
-            if ( blob )
-            {
-                if ( nvs_get_blob( nvs_handle, ZENITH_REGISTRY_NODE_KEY, blob, &blob_size ) == ESP_OK ) 
-                {
-                    if ( blob->header.registry_version != ZENITH_REGISTRY_VERSION  ) //|| blob_size != sizeof(zenith_registry_t) +  )
-                    {
-                        if ( nvs_erase_key( nvs_handle, ZENITH_REGISTRY_NODE_KEY ) == ESP_OK )
-                            nvs_commit( nvs_handle );
-                    }
-                    else
-                    {
-                        zenith_node_handle_t node = NULL;
-
-                        for ( int i = 0; i < blob->header.count; i++ ) {
-                            ESP_LOGD(TAG, "Loading node %d with mac: "MACSTR, i, MAC2STR( blob->nodes[i].mac ) );
-                            zenith_registry_get_node( handle, blob->nodes[i].mac, &node );
-                            //node->info->version = blob->nodes[i].version;
-                            // sett other fields that are stored in NVS. Maybe name and version etc
-                        }
-
-                    }
-                }
-
-                free( blob );
-                ESP_LOGD(TAG, "Loaded %d nodes from nvs", handle->count);
-            }
-        }
-        nvs_close(nvs_handle);
-    }
-    return ret;
-}
-
-
-esp_err_t _store_to_nvs( zenith_registry_handle_t handle ) {
-    esp_err_t ret = ESP_OK;
-
-    ESP_RETURN_ON_FALSE(
-        handle,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Invalid handle"
-    );
-
-    nvs_handle_t nvs_handle;
-    if ( nvs_open( ZENITH_REGISTRY_NAMESPACE, NVS_READWRITE, &nvs_handle ) == ESP_OK ) {
-        size_t blob_size = sizeof( zenith_registry_nvs_blob_t ) + ( sizeof( zenith_node_info_t ) * handle->count );
-        zenith_registry_nvs_blob_t *blob = calloc( 1, blob_size );
-        ESP_RETURN_ON_FALSE(
-            blob,
-            ESP_ERR_NO_MEM,
-            TAG, "Error allocating blob"
-        );
-        blob->header.registry_version = handle->registry_version;
-        blob->header.count = handle->count;
-        for ( int i = 0; i < handle->count; i++ ) 
-            memcpy( blob->nodes[i].mac, handle->nodes[i]->info->mac, ESP_NOW_ETH_ALEN );
-            // sett other fields that are stored in NVS. Maybe name and version etc
-
-        if ( nvs_set_blob( nvs_handle, ZENITH_REGISTRY_NODE_KEY, handle, blob_size  ) == ESP_OK )
-            nvs_commit( nvs_handle );
-
-        nvs_close( nvs_handle );
-    }
-
-    return ret;
-}
-
-
-size_t zenith_registry_index_of_mac( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN] ) {
+// get the index of a MAC address in the runtime buffer - poor naming
+static int _buffer_index_of_mac( zenith_registry_handle_t handle, const zenith_mac_address_t mac ) {
     if ( handle == NULL ) {
         ESP_LOGE( TAG, "Handle is NULL" );
-        return -2;
+        abort();
     }
-    ESP_LOGD( TAG, "index_of_mac - Registry count: %d", handle->count );
-    ESP_LOGD( TAG, "index_of_mac - MAC: "MACSTR, MAC2STR( mac ) );
-    for ( uint8_t i = 0; i < handle->count; i++ )
-        if ( memcmp( handle->nodes[i]->info->mac, mac, ESP_NOW_ETH_ALEN ) == 0 ) 
+
+    ESP_LOGD( TAG, "buffer_index_of_mac - Registry count: %d", handle->buffer_count );
+    ESP_LOGD( TAG, "buffer_index_of_mac - MAC: "MACSTR, MAC2STR( mac ) );
+    for ( uint8_t i = 0; i < handle->buffer_count; i++ )
+        if ( memcmp( handle->runtime_buffers[i].mac, mac, ESP_NOW_ETH_ALEN ) == 0 ) 
             return i;
 
-    return -1;
+    return -1; // Not found
 }
 
-
-size_t zenith_registry_count( zenith_registry_handle_t handle) {
-    if ( handle == NULL ) 
-    {
-        ESP_LOGE( TAG, "Handle is NULL" );
-        return -2;
-    }
-
-    return handle->count;
-}
-
-
-esp_err_t zenith_registry_create( zenith_registry_handle_t* handle ) {
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
-
-    esp_err_t ret = ESP_OK;
-    ESP_RETURN_ON_FALSE(
-        handle,
-        ESP_ERR_INVALID_ARG, 
-        TAG, "Null handle"
-    );
-
-    zenith_registry_handle_t registry = calloc(1, sizeof(zenith_registry_t));
-    ESP_RETURN_ON_FALSE(
-        registry,
-        ESP_ERR_NO_MEM, 
-        TAG, "Error allocating registry"
-    );
-
-    
-    // Set registry version to current version
-    registry->registry_version = ZENITH_REGISTRY_VERSION;
-    ESP_LOGD( TAG, "Registry version: %d", registry->registry_version );
-    ESP_LOGD( TAG, "Registry count: %d", registry->count );
-    _load_from_nvs( registry );
-
-    *handle = registry;
-    return ret;
-}
-
-
-esp_err_t zenith_registry_dispose( zenith_registry_handle_t handle )
-{
-    esp_err_t ret = ESP_OK;
-    ESP_RETURN_ON_FALSE(
-        handle,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null handle"
-    );
-    // Loop through all nodes and free them
-    for ( uint8_t i = 0; i < handle->count; i++ )
-    {
-        if ( handle->nodes[i] )
-        {
-            // Free the node data
-            if ( handle->nodes[i]->data->datapoints_handle )
-            {
-                free( handle->nodes[i]->data->datapoints_handle );
-                handle->nodes[i]->data->datapoints_handle = NULL;
-            }
-
-            free( handle->nodes[i] );
-            handle->nodes[i] = NULL;
+// Get the ringbuffer for a given sensor type or create it if not found
+static esp_err_t _get_ringbuffer( zenith_node_runtime_t *node, zenith_sensor_type_t type, zenith_ringbuffer_t **ringbuffer ) {
+    // Search existing rings
+    for ( size_t i = 0; i < node->ring_count; ++i ) {
+        if ( node->rings[i].type == type ) {
+            *ringbuffer = &node->rings[i];
+            return ESP_OK; // not happy with early returns, but this is cleaner
         }
     }
-    free( handle );
-    handle = NULL; // Should I do this? I've freed the pointer, so it is invalid now.
-    return ret;
-}
 
-
-esp_err_t zenith_registry_create_node_data ( zenith_registry_handle_t registry, uint8_t number_of_datapoints, zenith_node_data_handle_t *out_data ) {
-    ESP_RETURN_ON_FALSE(
-        registry,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null handle"
+    // Not found — allocate new ring slot
+    zenith_ringbuffer_t *new_rings = realloc( node->rings, (node->ring_count + 1) * sizeof( zenith_ringbuffer_t ) );
+    ESP_RETURN_ON_FALSE( 
+        new_rings, 
+        ESP_ERR_NO_MEM, 
+        TAG, "Failed to allocate memory for new ring" 
     );
-    ESP_RETURN_ON_FALSE(
-        out_data,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null data pointer"
-    );
+    node->rings = new_rings;
+    zenith_ringbuffer_t *new_ring = &node->rings[node->ring_count];
+    node->ring_count++;
 
-    // Create new data
-    zenith_node_data_handle_t new_data = calloc(1, sizeof( zenith_node_data_t ) );
-    size_t datapoints_size = zenith_datapoints_calculate_size( number_of_datapoints );
-    zenith_datapoints_handle_t new_datapoints = calloc( 1, datapoints_size );
-    ESP_RETURN_ON_FALSE(
-        new_data,
-        ESP_ERR_NO_MEM,
-        TAG, "Error allocating node data"
-    );
-    new_datapoints->num_datapoints = number_of_datapoints;
-    
-    new_data->datapoints_handle = new_datapoints;
-    new_data->timestamp = time( NULL );
+    memset( new_ring, 0, sizeof( *new_ring ) );
+    new_ring->type = type;
 
-    *out_data = new_data;
-    ESP_LOGD(TAG, "Created new node data with %d datapoints", number_of_datapoints);
+    *ringbuffer = new_ring;
 
     return ESP_OK;
 }
 
-
-esp_err_t zenith_registry_copy_node_data( zenith_datapoints_handle_t src, zenith_datapoints_handle_t *dst ) {
-    ESP_RETURN_ON_FALSE(
-        src,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null source data"
-    );
-    ESP_RETURN_ON_FALSE(
-        dst,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null destination data pointer"
+// Get the node runtime buffer for a given MAC address or create it if not found
+static esp_err_t _get_node_runtime_data( zenith_registry_handle_t handle, const zenith_mac_address_t mac, zenith_node_runtime_t **out_runtime_data )
+{
+    ESP_RETURN_ON_FALSE( 
+        handle && mac && out_runtime_data, 
+        ESP_ERR_INVALID_ARG, 
+        TAG, "Invalid args to get_node_runtime" 
     );
 
-    size_t data_size = zenith_datapoints_calculate_size( src->num_datapoints );
-    ESP_LOGD(TAG, "Copying node data with size: %d", data_size);
-    zenith_datapoints_handle_t copy = malloc( data_size);
-    ESP_RETURN_ON_FALSE(
-        copy,
-        ESP_ERR_NO_MEM,
-        TAG, "Error allocating node data"
-    );
-
-    memcpy( copy, src, data_size );
-
-    *dst = copy;
-
-    return ESP_OK;
-}
-
-
-esp_err_t zenith_registry_get_node_data( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], zenith_datapoints_handle_t *data ) {
-    ESP_RETURN_ON_FALSE( handle, ESP_ERR_INVALID_ARG, TAG, "Null handle" );
-    ESP_RETURN_ON_FALSE( mac, ESP_ERR_INVALID_ARG,TAG, "Null MAC address" );
-    ESP_RETURN_ON_FALSE( data, ESP_ERR_INVALID_ARG, TAG, "Null data pointer" );
-
-    zenith_node_handle_t node = NULL;
-    ESP_RETURN_ON_ERROR( zenith_registry_get_node( handle, mac, &node ), TAG, "Node not found" );
-
-    // Copy data pointer to output
-    zenith_registry_copy_node_data( node->data, data );
-
-    *data = node->data->datapoints_handle;
-
-    return ESP_OK;
-}
-
-
-esp_err_t zenith_registry_set_node_data( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], const zenith_datapoints_handle_t data ) {
-    ESP_RETURN_ON_FALSE(
-        handle,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null handle"
-    );
-    ESP_RETURN_ON_FALSE(
-        mac,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null MAC address"
-    );
-    ESP_RETURN_ON_FALSE(
-        data,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null data pointer"
-    );
-
-    zenith_node_handle_t node = NULL;
-    ESP_RETURN_ON_ERROR(
-        zenith_registry_get_node( handle, mac, &node ),
-        TAG, "Error getting node in set_node_data"
-    );
-
-//    if ( node->data->datapoints_handle )
-//        free( node->data->datapoints_handle );
-
-    node->data->datapoints_handle  = data;
-    return  ESP_OK; 
-}
-
-
-esp_err_t zenith_registry_dispose_node_data( zenith_registry_handle_t handle, zenith_node_data_handle_t *data ) {
-    esp_err_t ret = ESP_OK;
-
-    ESP_RETURN_ON_FALSE(
-        handle,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null handle"
-    );
-
-    ESP_RETURN_ON_FALSE(
-        data,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null data pointer"
-    );
-
-    if ( *data )
-    {
-        if ( (*data)->datapoints_handle )
-            free( (*data)->datapoints_handle );
-        free( *data );
-        *data = NULL;
-    }
-
-    return ret;
-}
-
-
-esp_err_t zenith_registry_create_node_info ( zenith_registry_handle_t registry, zenith_node_info_handle_t *out_info ) {
-    esp_err_t ret = ESP_OK;
-
-    ESP_RETURN_ON_FALSE(
-        registry,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null handle"
-    );
-
-    // Create new info
-    zenith_node_info_handle_t new_info = calloc(1, sizeof( zenith_node_info_t ) );
-    ESP_RETURN_ON_FALSE(
-        new_info,
-        ESP_ERR_NO_MEM,
-        TAG, "Error allocating node info"
-    );
-
-    *out_info = new_info;
-
-    return ret;
-}
-
-
-
-esp_err_t zenith_registry_get_node_info( zenith_registry_handle_t handle, const uint8_t mac[ESP_NOW_ETH_ALEN], zenith_node_info_handle_t *info ) {
-    ESP_RETURN_ON_FALSE( handle, ESP_ERR_INVALID_ARG, TAG, "Null handle" );
-    ESP_RETURN_ON_FALSE( mac, ESP_ERR_INVALID_ARG, TAG, "Null MAC address" );
-    ESP_RETURN_ON_FALSE( info, ESP_ERR_INVALID_ARG, TAG, "Null info pointer" );
-
-    zenith_node_handle_t node = NULL;
-    ESP_RETURN_ON_ERROR(
-        zenith_registry_get_node( handle, mac, &node ),
-        TAG, "Node not found"
-    );
-    *info = node->info;
-
-    return ESP_OK;
-}
-
-
-esp_err_t zenith_registry_set_node_info( zenith_registry_handle_t registry, const uint8_t mac[ESP_NOW_ETH_ALEN], const zenith_node_info_handle_t info ) {
-    ESP_RETURN_ON_FALSE( registry, ESP_ERR_INVALID_ARG, TAG, "Null handle" );
-    ESP_RETURN_ON_FALSE( mac, ESP_ERR_INVALID_ARG, TAG, "Null MAC address" );
-    ESP_RETURN_ON_FALSE( info, ESP_ERR_INVALID_ARG, TAG, "Null info pointer" );
-
-    zenith_node_handle_t node = NULL;
-    ESP_RETURN_ON_ERROR(
-        zenith_registry_get_node( registry, mac, &node ),
-        TAG, "Node not found"
-    );
-
-    // Free old info
-    if ( node->info ) 
-        free( node->info );
-
-    node->info = info;
-    _store_to_nvs( registry );
-
-    return ESP_OK;
-}
-
-
-esp_err_t zenith_registry_dispose_node_info( zenith_registry_handle_t registry, zenith_node_info_handle_t *info ) {
-    ESP_RETURN_ON_FALSE(
-        registry,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null handle"
-    );
-
-    ESP_RETURN_ON_FALSE(
-        info,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null info pointer"
-    );
-
-    if ( *info )
-    {
-        free( *info );
-        *info = NULL;
-    }
-
-    return ESP_OK;
-}
-
-
-esp_err_t zenith_registry_create_node ( zenith_registry_handle_t registry, zenith_node_handle_t *node ) {
-    esp_err_t ret = ESP_OK;
-
-    ESP_RETURN_ON_FALSE(
-        registry,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null handle"
-    );
-
-    ESP_RETURN_ON_FALSE(
-        node,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null node pointer"
-    );
-
-    // Create new node
-    zenith_node_t* new_node = calloc(1, sizeof( zenith_node_t ) );
-    ESP_RETURN_ON_FALSE(
-        new_node,
-        ESP_ERR_NO_MEM,
-        TAG, "Error allocating node"
-    );
-    ESP_RETURN_ON_ERROR(
-        zenith_registry_create_node_info( registry, &new_node->info ),
-        TAG, "Error creating node info" 
-    );
-
-    ESP_RETURN_ON_ERROR(
-        zenith_registry_create_node_data( registry, 0, &new_node->data ),
-        TAG, "Error creating node data" 
-    );
-
-    *node = new_node;
-
-    return ret;
-}
-
-esp_err_t zenith_registry_create_node_from_mac( zenith_registry_handle_t registry, const uint8_t mac[ESP_NOW_ETH_ALEN], zenith_node_handle_t *node ) {
-    ESP_RETURN_ON_FALSE(
-        mac,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null MAC address"
-    );
-
-    zenith_node_handle_t new_node = NULL;
-    // Check if node is allready registered
-    int8_t index = zenith_registry_index_of_mac( registry, mac );
-        if ( index >= 0 )
-        {
-            new_node = registry->nodes[index];
-        }  
-        else {
-            ESP_RETURN_ON_ERROR(
-                zenith_registry_create_node( registry, &new_node ),
-                TAG, "Error creating node"
-            );
-            
-            // Copy MAC address to node
-            memcpy( new_node->info->mac, mac, ESP_NOW_ETH_ALEN );
-            ESP_LOGD(TAG, "Creating new node with MAC: "MACSTR, MAC2STR( mac ) );}
-
-    *node = new_node;
-
-    return ESP_OK;
-}
-
-esp_err_t zenith_registry_get_node( zenith_registry_handle_t registry, const uint8_t mac[ESP_NOW_ETH_ALEN], zenith_node_handle_t *out_node ) {
-    esp_err_t ret = ESP_OK;
-    ESP_RETURN_ON_FALSE(
-        registry,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null handle"
-    );
-
-    ESP_RETURN_ON_FALSE(
-        mac,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null MAC address"
-    );
-
-    ESP_RETURN_ON_FALSE(
-        out_node,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null node pointer"
-    );
-
-    int8_t index = zenith_registry_index_of_mac( registry, mac );
-
+    int index = _buffer_index_of_mac( handle, mac );
     if ( index < 0 ) {
-        // Node not found, create new node
-        ESP_RETURN_ON_FALSE(
-            registry->count < ZENITH_REGISTRY_MAX_NODES,
-            ESP_ERR_NO_MEM,
-            TAG, "No room for more nodes"
+        // Reallocate the runtime buffers array to add a new one
+        zenith_node_runtime_t *new_rings = realloc( handle->runtime_buffers, ( handle->buffer_count + 1 ) * sizeof( zenith_node_runtime_t ) );
+        ESP_RETURN_ON_FALSE( 
+            new_rings, 
+            ESP_ERR_NO_MEM, 
+            TAG, "Failed to (re)allocate memory for new runtime buffer" 
         );
+        handle->runtime_buffers = new_rings;
 
-        zenith_node_handle_t new_node = NULL;
-        ESP_RETURN_ON_ERROR(
-            zenith_registry_create_node_from_mac( registry, mac, &new_node ),
-            TAG, "Error creating node"
-        );
+        index = handle->buffer_count;
+        handle->buffer_count++;
 
-        index = registry->count;
-        registry->count++;
+        // Initialize the new ring buffer
+        zenith_node_runtime_t *new_ring = &handle->runtime_buffers[index];
+        memset( new_ring, 0, sizeof( *new_ring ) );
+        memcpy( new_ring->mac, mac, sizeof (zenith_mac_address_t ) );
+    }
 
-        registry->nodes[index] = new_node;
-    }   
-
-    *out_node = registry->nodes[index];
-
-    return ret;
+    *out_runtime_data = &handle->runtime_buffers[index];
+    return ESP_OK;
 }
 
-esp_err_t zenith_registry_get_node_by_index( zenith_registry_handle_t registry, const uint8_t index, zenith_node_handle_t *out_node ) {
+// Add a reading to the ringbuffer
+static esp_err_t _ringbuffer_add_reading( zenith_ringbuffer_t *ring, zenith_reading_datatype_t value ) {
+    zenith_reading_t *slot = &ring->entries[ring->head];
+    slot->timestamp = time( NULL ); // Get current time in seconds since epoch
+    slot->value = value;
+
+    ring->head = (ring->head + 1) % ZENITH_RING_CAPACITY;
+    if ( ring->size < ZENITH_RING_CAPACITY ) {
+        ring->size++;
+    }
+    return ESP_OK;
+}
+
+static int _index_of_mac( zenith_registry_handle_t handle, const zenith_mac_address_t mac ) {
+    if ( handle == NULL ) {
+        ESP_LOGE( TAG, "Handle is NULL" );
+        abort();
+    }
+
+    ESP_LOGD( TAG, "index_of_mac - Registry count: %d", handle->node_count );
+    ESP_LOGD( TAG, "index_of_mac - MAC: "MACSTR, MAC2STR( mac ) );
+    for ( uint8_t i = 0; i < handle->node_count; i++ )
+        if ( memcmp( handle->nodes[i].mac, mac, ESP_NOW_ETH_ALEN ) == 0 ) 
+            return i;
+
+    return -1; // Not found
+}
+
+static esp_err_t zenith_registry_load_from_nvs( zenith_registry_handle_t handle )
+{
     esp_err_t ret = ESP_OK;
 
-    ESP_RETURN_ON_FALSE(
-        registry,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null handle"
+    zenith_registry_nvs_blob_t *blob = NULL;
+
+    nvs_handle_t nvs;
+    //create if not exists
+    ESP_GOTO_ON_ERROR( 
+        nvs_open( ZENITH_REGISTRY_NVS_NAMESPACE, NVS_READWRITE, &nvs ),
+        end, TAG, "Failed to open NVS namespace %s", ZENITH_REGISTRY_NVS_NAMESPACE
     );
 
-    ESP_RETURN_ON_FALSE(
-        out_node,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null node pointer"
+    size_t required_size = 0;
+    ESP_GOTO_ON_ERROR(
+        nvs_get_blob( nvs, ZENITH_REGISTRY_NVS_KEY, NULL, &required_size ),
+        end, TAG, "Failed to get size of NVS key %s", ZENITH_REGISTRY_NVS_KEY
     );
 
-    ESP_RETURN_ON_FALSE(
-        index < registry->count,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Index out of bounds"
+
+    ESP_GOTO_ON_FALSE(
+        required_size >= sizeof( zenith_registry_nvs_header_t ),
+        ESP_OK,
+        end, TAG, "NVS key %s is too small", ZENITH_REGISTRY_NVS_KEY
     );
 
-    *out_node = registry->nodes[index];
+    blob = malloc( required_size );
+    ESP_GOTO_ON_FALSE(
+        blob,
+        ESP_ERR_NO_MEM,
+        end, TAG, "Failed to allocate memory for NVS key %s", ZENITH_REGISTRY_NVS_KEY
+    );
+
+    ESP_GOTO_ON_FALSE(
+        nvs_get_blob( nvs, ZENITH_REGISTRY_NVS_KEY, blob, &required_size ) == ESP_OK,
+        ESP_OK,
+        end, TAG, "Failed to get NVS key %s", ZENITH_REGISTRY_NVS_KEY
+    );
+
+    ESP_GOTO_ON_FALSE(
+        blob->header.registry_version == ZENITH_REGISTRY_VERSION,
+        ESP_OK,
+        end, TAG, "NVS key %s has invalid version %d", ZENITH_REGISTRY_NVS_KEY, blob->header.registry_version
+    );
+
+    ESP_GOTO_ON_FALSE(
+        blob->header.count <= ZENITH_REGISTRY_MAX_NODES,
+        ESP_OK,
+        end, TAG, "NVS key %s has too many nodes %d", ZENITH_REGISTRY_NVS_KEY, blob->header.count
+    );
+
+    memcpy( handle->nodes, blob->nodes, blob->header.count * sizeof( zenith_node_info_t ) );
+    handle->node_count = blob->header.count;
+    ESP_LOGD( TAG, "Loaded %d nodes from NVS", handle->node_count );
+
+end:
+    nvs_close( nvs );
+
+    if ( blob)
+        free( blob );
+    
+    if ( ret == ESP_ERR_NVS_NOT_FOUND )
+        ret = ESP_OK; // No data yet — not an error
+    
+    return ret;
+}
+
+static esp_err_t zenith_registry_save_to_nvs( zenith_registry_handle_t handle )
+{
+    esp_err_t ret = ESP_OK;
+    size_t blob_size = sizeof( zenith_registry_nvs_header_t ) + handle->node_count * sizeof( zenith_node_info_t );
+
+    zenith_registry_nvs_blob_t *blob = NULL;
+    blob = malloc( blob_size );
+    ESP_RETURN_ON_FALSE(
+        blob,
+        ESP_ERR_NO_MEM,
+        TAG, "Failed to allocate memory for NVS key %s", ZENITH_REGISTRY_NVS_KEY
+    );
+
+    blob->header.registry_version = ZENITH_REGISTRY_VERSION;
+    blob->header.count = handle->node_count;
+    memcpy( blob->nodes, handle->nodes, handle->node_count * sizeof( zenith_node_info_t ) );
+
+    nvs_handle_t nvs;
+    ESP_GOTO_ON_ERROR(
+        nvs_open( ZENITH_REGISTRY_NVS_NAMESPACE, NVS_READWRITE, &nvs ),
+        end, 
+        TAG, "Failed to open NVS namespace %s", ZENITH_REGISTRY_NVS_NAMESPACE
+    );
+
+    ESP_GOTO_ON_ERROR(
+        nvs_set_blob( nvs, ZENITH_REGISTRY_NVS_KEY, blob, blob_size ),
+        end, 
+        TAG, "Failed to set NVS key %s", ZENITH_REGISTRY_NVS_KEY
+    );
+
+    ESP_GOTO_ON_ERROR(
+        nvs_commit( nvs ),
+        end,
+        TAG, "Failed to commit NVS key %s", ZENITH_REGISTRY_NVS_KEY
+    );
+    
+end:
+    nvs_close( nvs );
+    if ( blob )
+        free( blob );
 
     return ret;
 }
 
-esp_err_t zenith_registry_dispose_node( zenith_registry_handle_t registry, const uint8_t mac[ESP_NOW_ETH_ALEN], zenith_node_handle_t *node ) {
-    ESP_RETURN_ON_FALSE(
-        registry,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null handle"
+esp_err_t zenith_registry_new( zenith_registry_handle_t *out_handle )
+{
+    ESP_RETURN_ON_FALSE( out_handle, ESP_ERR_INVALID_ARG, TAG, "out_handle is NULL" );
+
+    zenith_registry_handle_t handle = NULL;
+    handle = calloc( 1, sizeof( struct zenith_registry_s ) );
+    ESP_RETURN_ON_FALSE( handle, ESP_ERR_NO_MEM, TAG, "Failed to allocate registry handle" );
+
+    if ( zenith_registry_load_from_nvs( handle ) != ESP_OK ) 
+        ESP_LOGD( TAG, "Failed to load registry from NVS" );
+    
+    *out_handle = handle;
+    return ESP_OK;
+}
+
+esp_err_t zenith_registry_delete( zenith_registry_handle_t handle )
+{
+    if ( handle )
+        free( handle );
+    return ESP_OK;
+}
+
+esp_err_t zenith_registry_register_callback( zenith_registry_handle_t handle, zenith_registry_callback_t callback )
+{
+    ESP_RETURN_ON_FALSE( handle, ESP_ERR_INVALID_ARG, TAG, "handle is NULL" );
+    handle->callback = callback;
+    return ESP_OK;
+}
+
+esp_err_t zenith_registry_store_node_info( zenith_registry_handle_t handle, const zenith_mac_address_t mac, const zenith_node_info_t *info )
+{
+    ESP_RETURN_ON_FALSE( 
+        handle && mac && info, 
+        ESP_ERR_INVALID_ARG, 
+        TAG, "Invalid args to store_node_info" 
     );
 
-    ESP_RETURN_ON_FALSE(
-        mac,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null MAC address"
+    zenith_registry_event_t event = ZENITH_REGISTRY_EVENT_NODE_ADDED;
+
+    // Search for existing
+    int index = _index_of_mac( handle, mac );
+
+    if ( index >= 0 ) {
+        handle->nodes[index] = *info;
+        event = ZENITH_REGISTRY_EVENT_NODE_UPDATED;
+    } else {
+        ESP_RETURN_ON_FALSE( handle->node_count < ZENITH_REGISTRY_MAX_NODES, ESP_ERR_NO_MEM, TAG, "Max node limit reached" );
+        handle->nodes[handle->node_count++] = *info;
+    }
+
+    ESP_RETURN_ON_ERROR( zenith_registry_save_to_nvs( handle ), TAG, "Failed to save updated node list to NVS" );
+
+    if ( handle->callback ) {
+        handle->callback( event, mac );
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t zenith_registry_get_node_info( zenith_registry_handle_t handle, const zenith_mac_address_t mac, zenith_node_info_t *out_info )
+{
+    ESP_RETURN_ON_FALSE( 
+        handle && mac && out_info, 
+        ESP_ERR_INVALID_ARG, 
+        TAG, "Invalid args to get_node_info" 
     );
 
-    ESP_RETURN_ON_FALSE(
-        node,
-        ESP_ERR_INVALID_ARG,
-        TAG, "Null node pointer"
+    int index = _index_of_mac( handle, mac );
+    if ( index >= 0 ) {
+        out_info = &handle->nodes[index];
+        return ESP_OK;
+    }
+
+    return ESP_ERR_NOT_FOUND;
+}
+
+esp_err_t zenith_registry_forget_node( zenith_registry_handle_t handle, const zenith_mac_address_t mac )
+{
+    ESP_RETURN_ON_FALSE( 
+        handle && mac, 
+        ESP_ERR_INVALID_ARG, 
+        TAG, "Invalid args to remove_node" 
     );
 
-    int8_t index = zenith_registry_index_of_mac( registry, mac );
-    ESP_RETURN_ON_FALSE(
-        index >= 0,
-        ESP_OK,
-        TAG, "Node not found"
+    int index = _index_of_mac( handle, mac ); 
+
+    if ( index >= 0 ) {
+        ESP_LOGD( TAG, "Forget node %d", index );   
+
+        // Copy last node to current index
+        if ( index != handle->node_count - 1 )
+            handle->nodes[index] = handle->nodes[handle->node_count - 1]; 
+
+        // Clear last node
+        handle->nodes[handle->node_count - 1] = (zenith_node_info_t){0}; 
+        handle->node_count--;
+        zenith_registry_save_to_nvs( handle );
+
+        if ( handle->callback ) {
+            handle->callback( ZENITH_REGISTRY_EVENT_NODE_REMOVED, mac );
+        }
+
+        return ESP_OK;
+
+    } else {
+        ESP_LOGD( TAG, "Forget node %d not found", index );   
+        return ESP_ERR_NOT_FOUND;
+    }
+   
+}
+
+esp_err_t zenith_registry_store_datapoints( zenith_registry_handle_t handle, const zenith_mac_address_t mac, const zenith_datapoint_t *datapoints, size_t count ) {
+    ESP_RETURN_ON_FALSE( 
+        handle && mac && datapoints, 
+        ESP_ERR_INVALID_ARG, 
+        TAG, "Invalid args to store_readings" 
     );
 
-    zenith_registry_dispose_node_data( registry, &(*node)->data);
-    zenith_registry_dispose_node_info( registry, &(*node)->info );
-    // Free node
-    free( node );
-    registry->nodes[index] = NULL;
+    zenith_node_runtime_t *node = NULL;
+    ESP_RETURN_ON_ERROR(
+        _get_node_runtime_data( handle, mac , &node ),
+        TAG, "Failed to get node runtime data"
+    );
 
+    ESP_RETURN_ON_FALSE( 
+        node, 
+        ESP_ERR_NO_MEM, 
+        TAG, "Failed to allocate node runtime" 
+    );
+
+    for ( size_t i = 0; i < count; ++i ) {
+        const zenith_datapoint_t *dp = &datapoints[i];
+        zenith_ringbuffer_t *ring = NULL;
+        ESP_RETURN_ON_ERROR(
+            _get_ringbuffer( node, dp->reading_type, &ring ),
+            TAG, "Failed to get ringbuffer for sensor type %d", dp->reading_type
+        );
+        ESP_RETURN_ON_FALSE( 
+            ring, 
+            ESP_ERR_NO_MEM, 
+            TAG, "Failed to allocate ring for sensor type %d", dp->reading_type 
+        );
+        _ringbuffer_add_reading( ring, dp->value );
+    }
+
+    if ( handle->callback ) {
+        handle->callback( ZENITH_REGISTRY_EVENT_READING_UPDATED, mac );
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t zenith_registry_get_node_count( zenith_registry_handle_t handle, size_t *out_count )
+{
+    ESP_RETURN_ON_FALSE( 
+        handle && out_count, 
+        ESP_ERR_INVALID_ARG, 
+        TAG, "Invalid args to get_node_count" 
+    );
+
+    *out_count = handle->node_count;
+    return ESP_OK;
+}
+
+esp_err_t zenith_registry_get_all_node_macs( zenith_registry_handle_t handle, zenith_mac_address_t *out_macs, size_t *inout_count )
+{
+    ESP_RETURN_ON_FALSE( 
+        handle && inout_count, 
+        ESP_ERR_INVALID_ARG, 
+        TAG, "Invalid args to get_node_macs" 
+    );
+
+    if ( out_macs == NULL ) {
+        // return required size
+        *inout_count = handle->node_count;
+        return ESP_OK;
+    }
+
+    if ( *inout_count < handle->node_count ) {
+        ESP_LOGE( TAG, "Not enough space for node macs" );
+        return ESP_ERR_NO_MEM;
+    }
+
+    for ( size_t i = 0; i < handle->node_count; i++ ) {
+        memcpy( out_macs[i], handle->nodes[i].mac, ESP_NOW_ETH_ALEN );
+    }
+
+    *inout_count = handle->node_count;
     return ESP_OK;
 }

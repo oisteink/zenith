@@ -14,13 +14,14 @@
 #include "zenith_core.h"
 #include "zenith_ui_core.h"
 #include "zenith_registry.h"
+#include "zenith_data.h"
 
 #define WS2812_GPIO GPIO_NUM_8
 
 static const char *TAG = "zenith-core";
 
 zenith_registry_handle_t node_registry = NULL;
-zenith_datapoints_handle_t datapoints_handles[ZENITH_REGISTRY_MAX_NODES];
+//zenith_datapoints_handle_t datapoints_handles[ZENITH_REGISTRY_MAX_NODES];
 
 esp_err_t initialize_nvs(void){
     // Initialize default NVS partition
@@ -50,8 +51,6 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
         TAG, "Version mismatch: %d != %d", packet->header.version, ZENITH_NOW_VERSION
     );
 
-    int8_t reg_index = zenith_registry_index_of_mac( node_registry, mac );
-
     switch ( packet->header.type )
     {
         case ZENITH_PACKET_PAIRING:
@@ -71,21 +70,19 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
             ESP_ERROR_CHECK( 
                 zenith_now_send_ack( mac, packet->header.type ) 
             );
-
-            zenith_now_payload_data_t *data = (zenith_now_payload_data_t *)packet->payload;
-            ESP_ERROR_CHECK( 
-                zenith_registry_set_node_data( node_registry, mac, data ) 
-            );
-
-            ESP_LOGI( TAG, "Received data from reg_index %d mac: "MACSTR, reg_index, MAC2STR( mac ) );
+            
+            zenith_datapoints_t *data = ( zenith_datapoints_t * )packet->payload;
+            
+            ESP_LOGI( TAG, "Received data from mac: "MACSTR, MAC2STR( mac ) );
             ESP_LOGI( TAG, "number_of_datapoints: %d", data->num_datapoints );          
             for ( int i = 0; i < data->num_datapoints; ++i ) {
                 ESP_LOGI( TAG, "datapoint %d: type: %d value: %.2f", i, data->datapoints[i].reading_type, data->datapoints[i].value );
             }
             
+            ESP_ERROR_CHECK( zenith_registry_store_datapoints( node_registry, mac, data->datapoints, data->num_datapoints ) );
             break;
         default:
-            ESP_LOGI( TAG, "default unhandled type %d from reg index %d mac: "MACSTR, packet->header.type, reg_index, MAC2STR( mac ) );
+            ESP_LOGI( TAG, "default unhandled type %d from mac: "MACSTR, packet->header.type, MAC2STR( mac ) );
             break;
         }
 }
@@ -95,8 +92,9 @@ void app_main( void )
     ESP_LOGI( TAG, "app_main()" );
     // Initialize default NVS partition
     ESP_ERROR_CHECK( initialize_nvs() );
-    ESP_ERROR_CHECK( zenith_registry_create( &node_registry ) );
-    uint8_t count = zenith_registry_count( node_registry );
+    ESP_ERROR_CHECK( zenith_registry_new( &node_registry ) );
+    size_t count;
+    ESP_ERROR_CHECK( zenith_registry_get_node_count( node_registry, &count ) );
     ESP_LOGI(TAG, "Registry has %d values", count);
     // Initialize display and load UI
     zenith_ui_config_t ui_config = {
