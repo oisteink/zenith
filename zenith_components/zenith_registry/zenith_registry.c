@@ -274,10 +274,10 @@ esp_err_t zenith_registry_register_callback( zenith_registry_handle_t handle, ze
     return ESP_OK;
 }
 
-esp_err_t zenith_registry_store_node_info( zenith_registry_handle_t handle, const zenith_mac_address_t mac, const zenith_node_info_t *info )
+esp_err_t zenith_registry_store_node_info( zenith_registry_handle_t handle, const zenith_node_info_t *info )
 {
     ESP_RETURN_ON_FALSE( 
-        handle && mac && info, 
+        handle && info, 
         ESP_ERR_INVALID_ARG, 
         TAG, "Invalid args to store_node_info" 
     );
@@ -285,10 +285,10 @@ esp_err_t zenith_registry_store_node_info( zenith_registry_handle_t handle, cons
     zenith_registry_event_t event = ZENITH_REGISTRY_EVENT_NODE_ADDED;
 
     // Search for existing
-    int index = _index_of_mac( handle, mac );
+    int index = _index_of_mac( handle, info->mac );
 
     if ( index >= 0 ) {
-        handle->nodes[index] = *info;
+        handle->nodes[ index ] = *info;
         event = ZENITH_REGISTRY_EVENT_NODE_UPDATED;
     } else {
         ESP_RETURN_ON_FALSE( handle->node_count < ZENITH_REGISTRY_MAX_NODES, ESP_ERR_NO_MEM, TAG, "Max node limit reached" );
@@ -298,7 +298,7 @@ esp_err_t zenith_registry_store_node_info( zenith_registry_handle_t handle, cons
     ESP_RETURN_ON_ERROR( zenith_registry_save_to_nvs( handle ), TAG, "Failed to save updated node list to NVS" );
 
     if ( handle->callback ) {
-        handle->callback( event, mac );
+        handle->callback( event, info->mac );
     }
 
     return ESP_OK;
@@ -433,5 +433,42 @@ esp_err_t zenith_registry_get_all_node_macs( zenith_registry_handle_t handle, ze
     }
 
     *inout_count = handle->node_count;
+    return ESP_OK;
+}
+
+esp_err_t zenith_registry_full_contents_to_log( zenith_registry_handle_t handle ) {
+    ESP_LOGI( TAG, "---- Zenith Registry Dump ----" );
+    ESP_LOGI( TAG, "Nodes: %u", (unsigned) handle->node_count );
+    ESP_LOGI( TAG, "------------------------------" );
+    
+    ESP_LOGI( TAG, "Node information:" );
+    for ( size_t i = 0; i < handle->node_count; ++i ) {
+        zenith_node_info_t *node = &handle->nodes[ i ];
+        ESP_LOGI( TAG, " Node %zu — MAC: "MACSTR, i, MAC2STR( node->mac ) );
+    }
+
+    ESP_LOGI( TAG, "Runtime data:" );
+    for ( size_t i = 0; i < handle->buffer_count; ++i ) {
+        zenith_node_runtime_t *node = &handle->runtime_buffers[ i ];
+        ESP_LOGI( TAG, " Node %zu — MAC: "MACSTR", Rings: %zu", i, MAC2STR( node->mac ), node->ring_count );
+
+        for ( size_t j = 0; j < node->ring_count; ++j ) {
+            zenith_ringbuffer_t *ring = &node->rings[j];
+            ESP_LOGI( TAG, "   Sensor Type: %u — Readings: %u",
+                      (unsigned) ring->type, (unsigned) ring->size );
+
+            for ( size_t k = 0; k < ring->size; ++k ) {
+                zenith_reading_t *r = &ring->entries[ k ];
+                if ( r->timestamp == 0 ) {
+                    continue; // skip uninitialized entries
+                }
+
+                ESP_LOGI( TAG, "     [%zu] ts=%llu, value=%.2f",
+                          k, r->timestamp, r->value );
+            }
+        }
+    }
+
+    ESP_LOGI( TAG, "------------------------------" );
     return ESP_OK;
 }

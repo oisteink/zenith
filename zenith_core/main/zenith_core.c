@@ -16,6 +16,9 @@
 #include "zenith_registry.h"
 #include "zenith_data.h"
 
+#include "esp_heap_caps.h"
+
+
 #define WS2812_GPIO GPIO_NUM_8
 
 static const char *TAG = "zenith-core";
@@ -56,13 +59,25 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
         case ZENITH_PACKET_PAIRING:
             ESP_LOGI( TAG, "Received pairing request from mac: "MACSTR, MAC2STR( mac ) );
             // Check if any flags or versions or whatnot that are set in the pairing payload and if all is ok:
-            // Send pairing ack
+
+            // Store the node in registry
+            zenith_node_info_t node_info;
+            memcpy(&node_info.mac, mac, sizeof( zenith_mac_address_t ) );
+
+            ESP_ERROR_CHECK(
+                zenith_registry_store_node_info( node_registry, &node_info )
+            );
+
+            // Send ack
             ESP_ERROR_CHECK( 
                 zenith_now_send_ack( mac, ZENITH_PACKET_PAIRING ) 
             );
+
+            // Do the pairing complete blink
             ESP_ERROR_CHECK( 
                 zenith_blink( BLINK_PAIRING_COMPLETE ) 
             );
+
             break;
 
         case ZENITH_PACKET_DATA:
@@ -80,6 +95,11 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
             }
             
             ESP_ERROR_CHECK( zenith_registry_store_datapoints( node_registry, mac, data->datapoints, data->num_datapoints ) );
+            //ESP_ERROR_CHECK( zenith_registry_full_contents_to_log( node_registry ) );
+
+            //ESP_LOGI( TAG, "Free heap: %u bytes", heap_caps_get_free_size( MALLOC_CAP_DEFAULT ) );
+            //UBaseType_t high_water_mark = uxTaskGetStackHighWaterMark( NULL );
+            //ESP_LOGI( TAG, "Stack high water mark: %u words (%u bytes)", high_water_mark, high_water_mark * sizeof( StackType_t ) );
             break;
         default:
             ESP_LOGI( TAG, "default unhandled type %d from mac: "MACSTR, packet->header.type, MAC2STR( mac ) );
@@ -93,9 +113,11 @@ void app_main( void )
     // Initialize default NVS partition
     ESP_ERROR_CHECK( initialize_nvs() );
     ESP_ERROR_CHECK( zenith_registry_new( &node_registry ) );
-    size_t count;
-    ESP_ERROR_CHECK( zenith_registry_get_node_count( node_registry, &count ) );
-    ESP_LOGI(TAG, "Registry has %d values", count);
+    ESP_ERROR_CHECK( zenith_registry_full_contents_to_log( node_registry ) );
+    /* size_t count;
+    ESP_ERROR_CHECK( zenith_registry_get_node_count( node_registry, &count ) ); 
+    ESP_LOGI( TAG, "Registry has %d values", count);*/
+
     // Initialize display and load UI
     zenith_ui_config_t ui_config = {
         .spi_host = SPI2_HOST,

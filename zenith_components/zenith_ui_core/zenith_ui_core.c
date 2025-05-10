@@ -1,8 +1,4 @@
-    /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: CC0-1.0
- */
+// zenity_ui_core.c
 
 #include <stdio.h>
 #include <string.h>
@@ -452,31 +448,44 @@ esp_err_t zenith_ui_del( zenith_ui_handle_t ui )
 
 esp_err_t zenith_ui_new_core( const zenith_ui_config_t* config, zenith_ui_handle_t *ui )
 {
-    zenith_ui_handle_t handle = ( zenith_ui_handle_t ) calloc( 1, sizeof( zenith_ui_t ) );
+    zenith_ui_handle_t handle = calloc( 1, sizeof( zenith_ui_t ) );
+    ESP_RETURN_ON_FALSE( handle, ESP_ERR_NO_MEM, TAG, "Failed to allocate zenith_ui handle" );
+
     memcpy( &handle->config, config, sizeof(zenith_ui_config_t ) );
+    // Initialise spi bus - this should probably be done by caller, as it's their spi bus
     ESP_RETURN_ON_ERROR(
         zenith_ui_core_init_spi( config->spi_host, config->sclk_pin, config->mosi_pin, config->miso_pin ),
         TAG, "Error initializing spi"
     );
+
+    // Initialize LCD panel backlight - uses LEDC for smooth brightness control
     ESP_RETURN_ON_ERROR(
         zenith_ui_core_init_lcd_backlight( config->lcd_backlight_pin ),
         TAG, "Error initializing lcd panel backlight"
     );
+
+    /// Initialize LCD panel
     ESP_RETURN_ON_ERROR(
         zenith_ui_core_init_lcd_panel( config->spi_host, config->lcd_cs_pin, config->lcd_dc_pin, config->lcd_reset_pin, &handle->lcd_io_handle, &handle->lcd_panel_handle ),
         TAG, "Error initializing lcd panel"
     );
+
+    // Initialize the touch panel
     ESP_RETURN_ON_ERROR(
         zenith_ui_core_init_touch_panel( config->spi_host, config->touch_cs_pin, &handle->touch_io_handle, &handle->touch_panel_handle ),
         TAG, "Error initializing touch panel"
     );
+
+    // Connect the lcd panel and touch panel to LVGL and initialize LVGL
     ESP_RETURN_ON_ERROR(
         zenith_ui_core_init_lvgl( config->spi_host, handle->lcd_io_handle, handle->lcd_panel_handle, handle->touch_panel_handle, &handle->display ),
         TAG, "Error initializing LVGL"
     );
 
+    // Store the registry handle
     handle->node_registry = config->node_registry;
 
+    // Deliver the handle to the caller
     *ui = handle;
 
     return ESP_OK;

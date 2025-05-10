@@ -90,7 +90,7 @@ typedef enum zenith_registry_event_e {
     ZENITH_REGISTRY_EVENT_NODE_UPDATED
 } zenith_registry_event_t;
 
-typedef void (*zenith_registry_callback_t)( zenith_registry_event_t event, const zenith_mac_address_t macv );
+typedef void (*zenith_registry_callback_t)( zenith_registry_event_t event, const zenith_mac_address_t mac );
 
 // Registry API
 
@@ -100,7 +100,7 @@ esp_err_t zenith_registry_delete( zenith_registry_handle_t handle );
 esp_err_t zenith_registry_register_callback( zenith_registry_handle_t handle, zenith_registry_callback_t callback );
 
 // Node information management 
-esp_err_t zenith_registry_store_node_info( zenith_registry_handle_t handle, const zenith_mac_address_t mac, const zenith_node_info_t *info );
+esp_err_t zenith_registry_store_node_info( zenith_registry_handle_t handle, const zenith_node_info_t *info );
 esp_err_t zenith_registry_get_node_info( zenith_registry_handle_t handle, const zenith_mac_address_t mac, zenith_node_info_t *out_info );
 esp_err_t zenith_registry_forget_node( zenith_registry_handle_t handle, const zenith_mac_address_t mac );
 
@@ -116,6 +116,8 @@ esp_err_t zenith_registry_get_latest_readings( zenith_registry_handle_t handle, 
 esp_err_t zenith_registry_get_history( zenith_registry_handle_t handle, const zenith_mac_address_t mac, zenith_sensor_type_t type, zenith_reading_t *out_history, size_t *inout_count );
 esp_err_t zenith_registry_get_max_last_24h( zenith_registry_handle_t handle, const zenith_mac_address_t mac, zenith_sensor_type_t type, zenith_reading_t *out_max_reading );
 esp_err_t zenith_registry_get_min_last_24h( zenith_registry_handle_t handle, const zenith_mac_address_t mac, zenith_sensor_type_t type, zenith_reading_t *out_min_reading );
+
+esp_err_t zenith_registry_full_contents_to_log( zenith_registry_handle_t handle );
 
 #ifdef __cplusplus
 }
