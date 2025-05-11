@@ -11,12 +11,10 @@
 #include "zenith_blink.h"
 #include "zenith_registry.h"
 
-#include "zenith_core.h"
 #include "zenith_ui_core.h"
 #include "zenith_registry.h"
 #include "zenith_data.h"
 
-#include "esp_heap_caps.h"
 
 
 #define WS2812_GPIO GPIO_NUM_8

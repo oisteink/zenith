@@ -1,9 +1,32 @@
-// zenith_now.h
+/**
+ * @file zenith_now.h
+ * @brief Zenith Network Protocol (ZENITH-NOW) implementation
+ * @details This file contains the implementation of the ZENITH-NOW protocol,
+ *          which is used for communication between Zenith Core and Node devices.
+ *
+ * @copyright [Your Copyright Information]
+ */
 #pragma once
 
+/**
+ * @brief Enable debug mode
+ * @note Uncomment to enable debug logging
+ */
 //#define ZNDEBUG 1
+
+/**
+ * @brief Major version number of the ZENITH-NOW protocol
+ */
 #define ZENITH_NOW_MAJOR_VERSION 1
+
+/**
+ * @brief Minor version number of the ZENITH-NOW protocol
+ */
 #define ZENITH_NOW_MINOR_VERSION 2
+
+/**
+ * @brief Combined version number (major << 4 | minor)
+ */
 #define ZENITH_NOW_VERSION ((ZENITH_NOW_MAJOR_VERSION << 4) | ZENITH_NOW_MINOR_VERSION)
 
 #define ZENITH_WIFI_CHANNEL 1
@@ -11,19 +34,38 @@
 #define DATA_ACK_BIT BIT1
 
 
+#include <stdint.h>
+#include <stdbool.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/event_groups.h"
+#include "freertos/task.h"
 #include "esp_now.h"
+#include "esp_err.h"
+#include "esp_mac.h"
 
 #define ZENITH_NOW_PAYLOAD_SIZE( packet_size )  ( ( packet_size ) - sizeof( zenith_now_packet_header_t ) )
 
 /* espnow data */
 
+/// @brief Type definition for packet types
+/// @note This type is used to identify different types of ZENITH-NOW packets
 typedef uint8_t zenith_now_packet_type_t;
+
+/**
+ * @brief Packet type definitions
+ * @details These constants define the different types of packets that can be sent
+ *          through the ZENITH-NOW protocol.
+ */
 enum {
-    ZENITH_PACKET_PAIRING = 1,  // Pairing Request
-    ZENITH_PACKET_DATA,         // Node data
-    ZENITH_PACKET_ACK,          // Acknowledgment for other packet types
-    ZENITH_PACKET_MAX           // Yes - for max to exist it has to be above all others. Therefore all usage shall be restricted to under max.
+    /** @brief Packet type for pairing requests */
+    ZENITH_PACKET_PAIRING = 1,
+    /** @brief Packet type for node data */
+    ZENITH_PACKET_DATA,
+    /** @brief Packet type for acknowledgments */
+    ZENITH_PACKET_ACK,
+    /** @brief Maximum packet type value */
+    ZENITH_PACKET_MAX
 };
 
 /// @brief Zenith Now data packet payload is just a zenith_datapoints_t in disguise.
@@ -115,8 +157,20 @@ typedef struct zenith_now_s {
 } zenith_now_t;
 
 
-esp_err_t zenith_now_init( const zenith_now_config_t *config );  // Initialize everything!
-esp_err_t zenith_now_teardown( void) ;                            // Frees shit and stops wifi
+/**
+ * @brief Initialize the ZENITH-NOW protocol
+ * @param config Configuration structure for the protocol
+ * @return ESP_OK on success, ESP_ERR_* on failure
+ * @note This function must be called before using any other ZENITH-NOW functions
+ */
+esp_err_t zenith_now_init( const zenith_now_config_t *config );
+
+/**
+ * @brief Cleanup and teardown the ZENITH-NOW protocol
+ * @return ESP_OK on success, ESP_ERR_* on failure
+ * @note This function should be called when the protocol is no longer needed
+ */
+esp_err_t zenith_now_teardown( void );
 
 // Sending packets
 esp_err_t zenith_now_new_packet( zenith_now_packet_type_t packet_type , uint8_t num_datapoints, zenith_now_packet_handle_t *out_packet );
