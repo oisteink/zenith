@@ -7,6 +7,8 @@
 #include "esp_err.h"
 #include "esp_check.h"
 
+#include "esp_console.h"
+
 #include "zenith_now.h"
 #include "zenith_blink.h"
 #include "zenith_registry.h"
@@ -14,6 +16,8 @@
 #include "zenith_ui_core.h"
 #include "zenith_registry.h"
 #include "zenith_data.h"
+#include "cmd_system.h"
+#include "argtable3/argtable3.h"
 
 
 
@@ -105,8 +109,81 @@ static void core_rx_callback(const uint8_t *mac, const zenith_now_packet_t *pack
         }
 }
 
+#define PROMPT_STR CONFIG_IDF_TARGET
+
+static struct {
+    struct arg_str *component;
+    struct arg_end *end;
+} dump_component_args;
+
+typedef enum dump_component_e {
+    DUMP_TARGET_REGISTRY=0,
+    DUMP_TARGET_MAX
+} dump_component_t;
+
+static const char* s_dump_component_names[] = {
+    "registry",
+};
+
+
+static int command_dump_component(int argc, char **argv) {
+    int nerrors = arg_parse( argc, argv, (void **) &dump_component_args );
+    if ( nerrors ) {
+        arg_print_errors(stderr, dump_component_args.end, argv[0]);
+        return 1;
+    }
+
+    if ( dump_component_args.component->count != 1 ) {
+        printf("Invalid number of arguments\n");
+        return 1;
+    }
+
+    char * target_str = dump_component_args.component->sval[0];
+    size_t target_len = strlen(target_str);
+    dump_component_t target;
+
+    for ( target = DUMP_TARGET_REGISTRY; target < DUMP_TARGET_MAX; target++ ) {
+        if (memcmp(target_str, s_dump_component_names[ target ], target_len ) == 0) {
+            break;
+        }
+    }
+
+    switch ( target ) {
+        case DUMP_TARGET_REGISTRY:
+            ESP_ERROR_CHECK( zenith_registry_full_contents_to_log( node_registry ) );
+            break;
+        default:
+            if ( target == DUMP_TARGET_MAX ) {
+                printf( "Invalid dump target '%s', choose from registry|(more-to-come)\n", target_str );
+                return 1;
+            }
+            ESP_LOGW( TAG, "Implementation missing for target %s", target_str );
+            break;
+    }
+
+    return 0;
+}
+
+
+static void register_dump(void)
+{
+    dump_component_args.component = arg_str1( NULL, NULL, "target", "To be implemented. The target that you want to dump. Currently just dumps registry" );
+    dump_component_args.end = arg_end(1);
+
+    const esp_console_cmd_t cmd = {
+        .command = "dump",
+        .help = "Dumps information and statistics from various compontents. Currently only supported component is registry.",
+        .hint = NULL,
+        .func = &command_dump_component,
+        .argtable = &dump_component_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register( &cmd ) );
+}
+
+
 void app_main( void )
 {
+    esp_log_level_set( "*", ESP_LOG_INFO );
     ESP_LOGI( TAG, "app_main()" );
     // Initialize default NVS partition
     ESP_ERROR_CHECK( initialize_nvs() );
@@ -149,5 +226,23 @@ void app_main( void )
 
 
     // Staying alive!
-    vTaskDelay(portMAX_DELAY);
+    //vTaskDelay(portMAX_DELAY);
+
+    // Initialize linenoise and console
+    //initialize_console_peripheral();
+    esp_console_repl_t *repl = NULL;
+    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+    repl_config.prompt = PROMPT_STR ">";
+    repl_config.max_cmdline_length = 1024;
+    esp_console_register_help_command();
+    register_system_common();
+    register_dump();
+    esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(
+        esp_console_new_repl_usb_serial_jtag( &hw_config, &repl_config, &repl) 
+    );
+
+    ESP_ERROR_CHECK(
+        esp_console_start_repl( repl )
+    );
 } 

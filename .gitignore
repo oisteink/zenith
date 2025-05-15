@@ -4,3 +4,4 @@ dependencies.lock
 sdkconfig.old
 zenith_core/things.md
 zenith_components/zenith_registry/DATAMODEL.md
+**/.cache/ 

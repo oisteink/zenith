@@ -44,7 +44,10 @@
     "regex": "c",
     "tuple": "c",
     "type_traits": "c",
-    "utility": "c"
+    "utility": "c",
+    "esp_console.h": "c",
+    "task.h": "c",
+    "argtable3.h": "c"
   },
   "idf.espIdfPathWin": "D:/Espressif/frameworks/esp-idf/",
   "idf.toolsPathWin": "D:\\Espressif",
@@ -58,5 +61,12 @@
     "plaintext": false,
     "markdown": false,
     "scminput": false
+  },
+  "idf.monitorPort": "COM4",
+  "idf.openOcdConfigs": [
+    "board/esp32c6-builtin.cfg"
+  ],
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32c6"
   }
 }
