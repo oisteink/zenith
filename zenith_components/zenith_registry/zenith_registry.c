@@ -437,24 +437,24 @@ esp_err_t zenith_registry_get_all_node_macs( zenith_registry_handle_t handle, ze
 }
 
 esp_err_t zenith_registry_full_contents_to_log( zenith_registry_handle_t handle ) {
-    ESP_LOGI( TAG, "---- Zenith Registry Dump ----" );
-    ESP_LOGI( TAG, "Nodes: %u", (unsigned) handle->node_count );
-    ESP_LOGI( TAG, "------------------------------" );
+    printf( "---- Zenith Registry Dump ----\n" );
+    printf( "Nodes: %u\n", (unsigned) handle->node_count );
+    printf( "------------------------------\n" );
     
-    ESP_LOGI( TAG, "Node information:" );
+    printf( "Node information:" );
     for ( size_t i = 0; i < handle->node_count; ++i ) {
         zenith_node_info_t *node = &handle->nodes[ i ];
-        ESP_LOGI( TAG, " Node %zu — MAC: "MACSTR, i, MAC2STR( node->mac ) );
+        printf( " Node %zu — MAC: "MACSTR"\n", i, MAC2STR( node->mac ) );
     }
 
-    ESP_LOGI( TAG, "Runtime data:" );
+    printf( "Runtime data:\n" );
     for ( size_t i = 0; i < handle->buffer_count; ++i ) {
         zenith_node_runtime_t *node = &handle->runtime_buffers[ i ];
-        ESP_LOGI( TAG, " Node %zu — MAC: "MACSTR", Rings: %zu", i, MAC2STR( node->mac ), node->ring_count );
+        printf( " Node %zu — MAC: "MACSTR", Rings: %zu\n", i, MAC2STR( node->mac ), node->ring_count );
 
         for ( size_t j = 0; j < node->ring_count; ++j ) {
             zenith_ringbuffer_t *ring = &node->rings[j];
-            ESP_LOGI( TAG, "   Sensor Type: %u — Readings: %u",
+            printf( "   Sensor Type: %u — Readings: %u\n",
                       (unsigned) ring->type, (unsigned) ring->size );
 
             for ( size_t k = 0; k < ring->size; ++k ) {
@@ -463,12 +463,11 @@ esp_err_t zenith_registry_full_contents_to_log( zenith_registry_handle_t handle 
                     continue; // skip uninitialized entries
                 }
 
-                ESP_LOGI( TAG, "     [%zu] ts=%llu, value=%.2f",
-                          k, r->timestamp, r->value );
+                printf( "     [%zu] ts=%llu, value=%.2f\n", k, r->timestamp, r->value );
             }
         }
     }
 
-    ESP_LOGI( TAG, "------------------------------" );
+    printf( "------------------------------\n" );
     return ESP_OK;
 }
